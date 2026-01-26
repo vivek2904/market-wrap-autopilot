@@ -1,0 +1,22 @@
+name: Market Autopilot (5:30 PM IST)
+on:
+  schedule:
+    - cron: '0 12 * * *' # 12:00 PM UTC = 5:30 PM IST
+  workflow_dispatch: # Allows manual testing
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      - name: Install Libs
+        run: pip install requests nselib pandas lxml
+      - name: Run Bot
+        env:
+          WP_USER: ${{ secrets.WP_USER }}
+          WP_PASS: ${{ secrets.WP_PASS }}
+          WP_URL: ${{ secrets.WP_URL }}
+        run: python market_bot.py
