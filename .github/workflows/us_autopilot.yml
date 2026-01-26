@@ -1,21 +1,33 @@
 name: US Market Autopilot (5 PM EST)
+
 on:
   schedule:
-    - cron: '0 22 * * 1-5' # 10 PM UTC = 5 PM EST (Monday to Friday)
-  workflow_dispatch:
+    # 5:00 PM EST is 10:00 PM UTC. This runs Monday to Friday.
+    - cron: '0 22 * * 1-5'
+  workflow_dispatch: # Allows you to trigger the bot manually for testing
+
 jobs:
   run-us-bot:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
+          # Python 3.10+ is required for the latest pandas_market_calendars and yfinance
           python-version: '3.10'
-      - name: Install Libs
-       run: pip install requests yfinance pandas lxml beautifulsoup4
-      - name: Run US Bot
+
+      - name: Install Dependencies
+        run: |
+          pip install --upgrade pip
+          pip install requests yfinance pandas lxml beautifulsoup4
+
+      - name: Execute US Market Bot
         env:
+          # These must match the Secret names you created in GitHub Settings
           WP_USER: ${{ secrets.WP_USER }}
           WP_PASS: ${{ secrets.WP_PASS }}
           WP_URL: ${{ secrets.WP_URL }}
