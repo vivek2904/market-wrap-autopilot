@@ -13,8 +13,7 @@ jobs:
         with:
           python-version: '3.10'
       - name: Install Libs
-        # We switched to nsepython and added curl/openssl for connectivity
-        run: pip install requests pandas nsepython lxml
+        run: pip install requests pandas lxml
       - name: Run Bot
         env:
           WP_USER: ${{ secrets.WP_USER }}
