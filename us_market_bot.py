@@ -30,7 +30,6 @@ def get_market_data():
     data = raw_data['Close']
     returns = (data.iloc[-1] / data.iloc[-2] - 1) * 100
     
-    # Mapping for display
     sector_map = {'XLK': 'Technology', 'XLV': 'Health Care', 'XLF': 'Financials', 'XLY': 'Cons. Discretionary', 
                   'XLC': 'Communication', 'XLI': 'Industrials', 'XLP': 'Cons. Staples', 'XLE': 'Energy', 
                   'XLB': 'Materials', 'XLRE': 'Real Estate', 'XLU': 'Utilities'}
@@ -41,7 +40,9 @@ def get_market_data():
 def build_seo_report():
     try:
         sp_change, ranked = get_market_data()
-    except: return None, None
+    except Exception as e:
+        print(f"Data Fetch Error: {e}")
+        return None, None, None
 
     status = "Advances" if sp_change > 0 else "Declines"
     
@@ -56,53 +57,58 @@ def build_seo_report():
         <p style="font-size:18px; color:{'#52c41a' if sp_change > 0 else '#f5222d'};">Market Sentiment: {'Bullish 🚀' if sp_change > 0 else 'Bearish 🔻'}</p>
     </div>
 
-    <h2 style="color:#1a2b48; border-left:5px solid #1890ff; padding-left:15px;">Daily Wall Street Intelligence</h2>
-    <p style="line-height:1.6; color:#444;">The US stock market {status.lower()} today as investors reacted to the latest economic data and corporate earnings. Below is a detailed breakdown of the <strong>best and worst performing sectors</strong> on Wall Street.</p>
+    <h2 style="color:#1a2b48; border-left:5px solid #1890ff; padding-left:15px;">Wall Street Intelligence Report</h2>
+    <p style="line-height:1.6; color:#444;">The US stock market {status.lower()} in today's session as investors parsed global economic data and institutional flows. This recap highlights the key sectoral shifts and price action across major indices.</p>
 
-    <h3 style="margin-top:30px; color:#389e0d;">🚀 Top 3 Sector Gainers</h3>
+    <h3 style="margin-top:30px; color:#389e0d;">🚀 Sector Outperformers</h3>
     {" ".join([f'''
-    <div style="background:#f6ffed; border:1px solid #b7eb8f; padding:20px; border-radius:12px; margin-bottom:15px;">
+    <div style="background:#f6ffed; border:1px solid #b7eb8f; padding:20px; border-radius:12px; margin-bottom:15px; font-family:sans-serif;">
         <div style="display:flex; justify-content:space-between; align-items:center;">
-            <strong>{s} Sector</strong>
-            <span style="color:#389e0d; font-weight:bold;">+{v:.2f}%</span>
+            <strong>{s}</strong>
+            <span style="color:#389e0d; font-weight:bold; font-size:18px;">+{v:.2f}%</span>
         </div>
-        <p style="margin:8px 0 0 0; font-size:12px; color:#666;"><strong>Key Movers:</strong> {', '.join(WATCHLIST.get(s, []))}</p>
+        <p style="margin:8px 0 0 0; font-size:12px; color:#555;"><strong>Top Weights:</strong> {', '.join(WATCHLIST.get(s, []))}</p>
     </div>
     ''' for s, v in ranked.head(3).items()])}
 
-    <h3 style="margin-top:30px; color:#cf1322;">🔻 Bottom 3 Sector Laggards</h3>
+    <h3 style="margin-top:30px; color:#cf1322;">🔻 Sector Laggards</h3>
     {" ".join([f'''
-    <div style="background:#fff1f0; border:1px solid #ffa39e; padding:20px; border-radius:12px; margin-bottom:15px;">
+    <div style="background:#fff1f0; border:1px solid #ffa39e; padding:20px; border-radius:12px; margin-bottom:15px; font-family:sans-serif;">
         <div style="display:flex; justify-content:space-between; align-items:center;">
-            <strong>{s} Sector</strong>
-            <span style="color:#cf1322; font-weight:bold;">{v:.2f}%</span>
+            <strong>{s}</strong>
+            <span style="color:#cf1322; font-weight:bold; font-size:18px;">{v:.2f}%</span>
         </div>
         <p style="margin:8px 0 0 0; font-size:12px; color:#666;"><strong>Under Pressure:</strong> {', '.join(WATCHLIST.get(s, []))}</p>
     </div>
     ''' for s, v in ranked.tail(3).items()])}
 
     <p style="margin-top:40px; border-top:1px solid #eee; padding-top:20px; font-size:14px; color:#888; text-align:center;">
-        <em>Data provided by Yahoo Finance. For long-term valuation trends, visit our <strong>India Stock Market PE Ratio</strong> analysis.</em>
+        <em>Source: Yahoo Finance Data. Check our <strong>India Stock Market PE Ratio</strong> tool for long-term valuation trends.</em>
     </p>
     """
-    return html, sp_change
+    return html, sp_change, ranked
 
 def post():
-    content, change = build_seo_report()
+    content, change, ranked = build_seo_report()
     if not content: return
-    auth = base64.b64encode(f"{WP_USER}:{WP_PASS}".encode()).decode()
     
-    # SEO Optimized Title
-    title = f"Stock Market Today: S&P 500 {'Gains' if change > 0 else 'Slips'} {change:.2f}% | Wall Street Wrap {datetime.now().strftime('%d %b')}"
+    auth_str = f"{WP_USER}:{WP_PASS}"
+    token = base64.b64encode(auth_str.encode()).decode('utf-8')
+    headers = {'Authorization': f'Basic {token}', 'Content-Type': 'application/json'}
+    
+    # Title optimized for keywords
+    post_title = f"Stock Market Today: S&P 500 {'Gains' if change > 0 else 'Slips'} {change:.2f}% | US Market Wrap {datetime.now().strftime('%d %b')}"
     
     payload = {
-        'title': title,
+        'title': post_title,
         'content': content,
         'status': 'publish',
         'categories': [CATEGORY_ID],
-        'excerpt': f"US Market Recap for {datetime.now().strftime('%B %d, %Y')}. S&P 500 moves {change:.2f}% as {ranked.index[0]} leads the session."
+        'excerpt': f"Daily US Market Recap: S&P 500 moves {change:.2f}% as {ranked.index[0]} sector leads performance for the day."
     }
-    requests.post(WP_URL, headers={'Authorization': f'Basic {auth}', 'Content-Type': 'application/json'}, json=payload)
+    
+    res = requests.post(WP_URL, headers=headers, json=payload)
+    print("✅ Success!" if res.status_code == 201 else f"❌ Error: {res.text}")
 
 if __name__ == "__main__":
     post()
