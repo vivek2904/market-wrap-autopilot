@@ -1,7 +1,6 @@
 import os, requests, base64, pandas as pd
 from datetime import datetime
-import xml.etree.ElementTree as ET
-from nselib import indices, capital_market
+from nsepython import nse_get_fii_dii, nse_get_index_quote
 
 # --- SECURE CREDENTIALS ---
 WP_USER = os.environ.get('WP_USER')
@@ -12,49 +11,36 @@ CATEGORY_ID = 12
 def get_fii_dii():
     """Fetches FII/DII Net Cash Market flow."""
     try:
-        url = "https://www.moneycontrol.com/stocks/marketstats/fii_dii_activity/index.php"
-        headers = {'User-Agent': 'Mozilla/5.0'}
-        response = requests.get(url, headers=headers)
-        tables = pd.read_html(response.text)
-        df = tables[0]
-        return df.iloc[0, 3], df.iloc[0, 6] # FII Net, DII Net
+        data = nse_get_fii_dii()
+        # Finding the cash market row
+        for item in data:
+            if item['category'] == 'FII/FPI' and 'Cash' in item['index']:
+                fii_net = item['net']
+            if item['category'] == 'DII' and 'Cash' in item['index']:
+                dii_net = item['net']
+        return fii_net, dii_net
     except:
         return "N/A", "N/A"
 
-def get_news_reason():
-    """Fetches a market headline to explain the 'Why'."""
-    try:
-        rss = requests.get("https://www.moneycontrol.com/rss/marketreports.xml")
-        root = ET.fromstring(rss.content)
-        latest = root.find('.//item')
-        return f"<strong>{latest.find('title').text}</strong>: {latest.find('description').text[:180]}..."
-    except:
-        return "Market sentiment was driven by institutional flows and global macro cues."
-
 def build_report():
     try:
-        # Use the updated indices module for live data
-        idx_data = indices.live_index_performances()
-        nifty = idx_data[idx_data['index'] == 'NIFTY 50'].iloc[0]
-        
-        # Sectoral winners/losers
-        sorted_idx = idx_data.sort_values('pChange', ascending=False)
-        winner = sorted_idx.iloc[0]
-        loser = sorted_idx.iloc[-1]
+        # Fetch Live Nifty 50 Data
+        nifty_data = nse_get_index_quote("NIFTY 50")
+        last_price = nifty_data['lastPrice']
+        p_change = nifty_data['pChange']
         
         fii, dii = get_fii_dii()
-        reason = get_news_reason()
     except Exception as e:
-        print(f"Skipping: Market likely closed for Republic Day. Error: {e}")
+        print(f"Skipping: Market likely closed for Republic Day. Details: {e}")
         return None, None
 
     # --- PROFESSIONAL DASHBOARD HTML ---
     html = f"""
     <div style="background:linear-gradient(135deg, #1a2b48 0%, #34495e 100%); color:white; padding:45px; border-radius:20px; text-align:center; font-family:sans-serif;">
         <h1 style="color:white; margin:0; font-size:26px;">Daily Closing Wrap: {datetime.now().strftime('%d %b %Y')}</h1>
-        <div style="font-size:72px; font-weight:800; margin:15px 0;">{nifty['lastPrice']}</div>
-        <div style="font-size:24px; color:{'#00ffbb' if float(nifty['pChange']) > 0 else '#ff6b6b'};">
-            {nifty['pChange']}% {'▲' if float(nifty['pChange']) > 0 else '▼'}
+        <div style="font-size:72px; font-weight:800; margin:15px 0;">{last_price}</div>
+        <div style="font-size:24px; color:{'#00ffbb' if float(p_change) > 0 else '#ff6b6b'};">
+            {p_change}% {'▲' if float(p_change) > 0 else '▼'}
         </div>
     </div>
 
@@ -72,22 +58,18 @@ def build_report():
 
     <div style="background:#fef9e7; padding:25px; border-radius:12px; border-left:6px solid #f1c40f; margin:30px 0;">
         <h3 style="margin-top:0; color:#9a7d0a;">The "Why" Behind Today's Move</h3>
-        <p>{reason}</p>
+        <p>Today's market sentiment was primarily driven by institutional flows and sectoral rotation. For a deeper look at valuations, visit our <strong>India Stock Market PE Ratio</strong> dashboard.</p>
     </div>
-
-    <p style="margin-top:40px; font-size:14px; color:#888; border-top:1px solid #eee; padding-top:20px; text-align:center;">
-        <em>Follow our <strong>India Stock Market PE Ratio</strong> dashboard for valuation context.</em>
-    </p>
     """
-    return html, nifty['pChange']
+    return html, p_change
 
 def run():
     content, change = build_report()
-    if not content: return # Exit if no data (holiday)
+    if not content: return # Exit if holiday
     
     auth = base64.b64encode(f"{WP_USER}:{WP_PASS}".encode()).decode()
     payload = {
-        'title': f"Market Wrap {datetime.now().strftime('%d %b')}: Nifty {'Advances' if float(change) > 0 else 'Retreats'} {change}%",
+        'title': f"Market Wrap {datetime.now().strftime('%d %b')}: Nifty {'Advances' if float(change) > 0 else 'Dips'} {change}%",
         'content': content,
         'status': 'publish',
         'categories': [CATEGORY_ID]
