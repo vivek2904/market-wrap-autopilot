@@ -9,9 +9,9 @@ WP_PASS = os.environ.get('WP_PASS')
 WP_URL = os.environ.get('WP_URL')
 CATEGORY_ID = 12 
 
-# Indian Sector Mapping (Yahoo Finance Tickers)
+# Corrected Indian Sector Mapping (Fixed IT Ticker)
 SECTORS = {
-    '^NSEI': 'NIFTY 50', '^NSEBANK': 'Banking', 'NIFTY_IT.NS': 'IT Services',
+    '^NSEI': 'NIFTY 50', '^NSEBANK': 'Banking', '^CNXIT': 'IT Services',
     '^CNXAUTO': 'Automobile', '^CNXFMCG': 'FMCG', '^CNXMETAL': 'Metals',
     '^CNXPHARMA': 'Healthcare', '^CNXENERGY': 'Oil & Gas', '^CNXFIN': 'Financial Services'
 }
@@ -25,7 +25,7 @@ WATCHLIST = {
 }
 
 def get_valuation_insights():
-    """Scrapes the top text, current PE, and metrics table from worldperatio.com"""
+    """Scrapes top text, current PE, and metrics table from worldperatio.com"""
     url = "https://www.worldperatio.com/area/india/"
     headers = {'User-Agent': 'Mozilla/5.0'}
     try:
@@ -45,16 +45,21 @@ def get_valuation_insights():
         tables = pd.read_html(response.text)
         metrics_df = tables[0].head(4)[['Period', 'Average P/E (μ)', 'Std Dev (σ)', 'vs Current']]
         
-        return insight_text, current_pe, metrics_df.to_html(index=False, border=0)
+        return insight_text, current_pe, metrics_df.to_html(index=False, border=0, classes='pe-table')
     except:
-        return "Market valuation data provides a broad perspective on conditions.", "22.85", "Data updating..."
+        return "Nifty 50 valuation provides a broad perspective on market conditions.", "22.85", "Data currently updating..."
 
 def get_market_data():
     tickers = list(SECTORS.keys())
-    # Pull 5 days to handle holidays like Republic Day
-    raw_data = yf.download(tickers, period='5d', interval='1d', auto_adjust=True)
-    data = raw_data['Close'].dropna()
+    # Pull 7 days to safely handle holidays like Republic Day
+    raw_data = yf.download(tickers, period='7d', interval='1d', auto_adjust=True)
     
+    # Use 'Close' and drop columns that failed to download
+    data = raw_data['Close'].dropna(axis=1, how='all').dropna(axis=0)
+    
+    if data.empty or len(data) < 2:
+        return None, None, None
+
     last_session = data.iloc[-1]
     prev_session = data.iloc[-2]
     
@@ -70,6 +75,8 @@ def get_market_data():
 def build_report():
     try:
         price, change, ranked = get_market_data()
+        if price is None: return None, None
+        
         insight, pe, v_table = get_valuation_insights()
     except Exception as e:
         print(f"Build Error: {e}")
@@ -101,7 +108,7 @@ def build_report():
             <strong>{s}</strong>
             <b style="color:#389e0d;">+{v:.2f}%</b>
         </div>
-        <p style="margin:8px 0 0 0; font-size:12px; color:#666;"><b>Heavyweights:</b> {", ".join(WATCHLIST.get(s, []))}</p>
+        <p style="margin:8px 0 0 0; font-size:12px; color:#666;"><b>Heavyweights:</b> {", ".join(WATCHLIST.get(s, ["Major Sector Stocks"]))}</p>
     </div>''' for s, v in ranked.head(4).items() if s != 'NIFTY 50'])}
 
     <h2 style="color:#1a2b48; border-bottom:2px solid #333; padding-bottom:8px; margin-top:30px; font-family:sans-serif;">🔻 Laggard Sectors</h2>
@@ -111,7 +118,7 @@ def build_report():
             <strong>{s}</strong>
             <b style="color:#cf1322;">{v:.2f}%</b>
         </div>
-        <p style="margin:8px 0 0 0; font-size:12px; color:#666;"><b>Under Pressure:</b> {", ".join(WATCHLIST.get(s, []))}</p>
+        <p style="margin:8px 0 0 0; font-size:12px; color:#666;"><b>Under Pressure:</b> {", ".join(WATCHLIST.get(s, ["Major Sector Stocks"]))}</p>
     </div>''' for s, v in ranked.tail(3).items() if s != 'NIFTY 50'])}
     """
     return html, change
@@ -125,7 +132,8 @@ def post():
             'title': f"Indian Market Wrap {datetime.now().strftime('%d %b')}: Nifty {change:.2f}%",
             'content': content, 'status': 'publish', 'categories': [CATEGORY_ID]
         }
-        requests.post(WP_URL, headers=headers, json=payload)
+        res = requests.post(WP_URL, headers=headers, json=payload)
+        print("Success!" if res.status_code == 201 else f"Error: {res.text}")
 
 if __name__ == "__main__":
     post()
