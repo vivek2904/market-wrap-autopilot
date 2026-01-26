@@ -13,7 +13,7 @@ jobs:
         with:
           python-version: '3.10'
       - name: Install Libs
-        run: pip install requests pandas lxml
+        run: pip install requests pandas lxml yfinance beautifulsoup4
       - name: Run Bot
         env:
           WP_USER: ${{ secrets.WP_USER }}
