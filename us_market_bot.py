@@ -2,6 +2,7 @@ import os, requests, base64, pandas as pd
 import yfinance as yf
 from datetime import datetime
 from bs4 import BeautifulSoup
+import re
 
 # --- SECURE CONFIG ---
 WP_USER = os.environ.get('WP_USER')
@@ -17,7 +18,7 @@ SECTORS = {
     'XLRE': 'Real Estate', 'XLU': 'Utilities'
 }
 
-# WATCHLIST WITH FULL NAMES (10 per sector)
+# WATCHLIST WITH FULL NAMES
 WATCHLIST = {
     'Technology': ['Apple (AAPL)', 'Microsoft (MSFT)', 'Nvidia (NVDA)', 'Broadcom (AVGO)', 'Oracle (ORCL)', 'Adobe (ADBE)', 'Cisco (CSCO)', 'Salesforce (CRM)', 'AMD (AMD)', 'Qualcomm (QCOM)'],
     'Financials': ['JPMorgan Chase (JPM)', 'Visa (V)', 'Mastercard (MA)', 'Bank of America (BAC)', 'Goldman Sachs (GS)', 'Morgan Stanley (MS)', 'Wells Fargo (WFC)', 'BlackRock (BLK)', 'American Express (AXP)', 'Citigroup (C)'],
@@ -33,38 +34,43 @@ WATCHLIST = {
 }
 
 def get_valuation_data():
-    """Scrapes PE Ratio and Metrics Table from worldperatio.com"""
+    """Dynamically scrapes P/E, Returns, and Tables from worldperatio.com"""
     url = "https://www.worldperatio.com/area/united-states/"
     headers = {'User-Agent': 'Mozilla/5.0'}
     try:
         response = requests.get(url, headers=headers, timeout=15)
         soup = BeautifulSoup(response.text, 'html.parser')
         
-        # 1. Improved PE Extraction
-        # Finds the specific <span> or text containing the P/E Ratio value
-        pe_row = soup.find(string=lambda t: "P/E Ratio:" in t)
-        current_pe = pe_row.split("P/E Ratio:")[-1].strip() if pe_row else "26.96"
+        # 1. DYNAMIC P/E EXTRACTION
+        # Searches for the text 'P/E Ratio:' and grabs the following number
+        pe_text = soup.find(string=re.compile(r"P/E Ratio:"))
+        current_pe = re.search(r"\d+\.\d+", pe_text).group() if pe_text else "N/A"
         
-        # 2. Table Scraping with specific index selection
+        # 2. DYNAMIC RETURN EXTRACTION
+        # Searches for 'Expected Forward 1Y Return' in the HTML text
+        return_text = soup.find(string=re.compile(r"Expected Forward 1Y Return"))
+        # Looking for a percentage or float following that text
+        forward_return = "N/A"
+        if return_text:
+            # Check the parent or sibling for the actual value (3.13)
+            val_match = re.search(r"(-?\d+\.\d+)%", soup.get_text())
+            if val_match:
+                forward_return = f"{val_match.group(1)}%"
+
+        # 3. DYNAMIC TABLE EXTRACTION
         tables = pd.read_html(response.text)
-        metrics_df = None
+        metrics_table = ""
         for df in tables:
-            if 'Period' in df.columns and 'Average P/E' in str(df.columns):
-                metrics_df = df.head(4)
+            if 'Period' in df.columns and any('Average P/E' in col for col in df.columns):
+                # Select requested columns and format
+                clean_df = df[['Period', 'Average P/E (μ)', 'Std Dev (σ)', 'vs Current']].head(4)
+                metrics_table = clean_df.to_html(index=False, border=0, classes='valuation-table')
                 break
         
-        # 3. Handle "Expected 1Y Forward Return" specifically
-        # Mapping 3.13% as extracted from current market metrics provided in user query
-        forward_return = "3.13%" 
-        
-        # 4. Filter columns to only what is needed
-        display_df = metrics_df[['Period', 'Average P/E (μ)', 'Std Dev (σ)', 'vs Current']]
-        table_html = display_df.to_html(index=False, border=0, classes='valuation-table')
-        
-        return current_pe, forward_return, table_html
+        return current_pe, forward_return, metrics_table
     except Exception as e:
-        print(f"Valuation Scrape Error: {e}")
-        return "26.96", "3.13%", "<p>Valuation table currently updating...</p>"
+        print(f"Dynamic Scrape Error: {e}")
+        return "N/A", "N/A", ""
 
 def get_market_data():
     all_tickers = list(SECTORS.keys()) + ['^GSPC']
@@ -116,7 +122,7 @@ def build_report():
         </div>
     </div>
 
-    <h2 style="margin-top:40px; border-bottom:2px solid #333; padding-bottom:10px; color:#1a2b48; font-family:sans-serif;">🚀 Leading Sectors</h2>
+    <h2 style="margin-top:40px; border-bottom:2px solid #333; padding-bottom:10px; color:#1a2b48;">🚀 Leading Sectors</h2>
     {" ".join([f'''
     <div style="background:#f6ffed; border:1px solid #b7eb8f; padding:20px; border-radius:12px; margin-bottom:15px; font-family:sans-serif;">
         <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -127,7 +133,7 @@ def build_report():
     </div>
     ''' for s, v in top_3.items()])}
 
-    <h2 style="margin-top:40px; border-bottom:2px solid #333; padding-bottom:10px; color:#1a2b48; font-family:sans-serif;">🔻 Laggard Sectors</h2>
+    <h2 style="margin-top:40px; border-bottom:2px solid #333; padding-bottom:10px; color:#1a2b48;">🔻 Laggard Sectors</h2>
     {" ".join([f'''
     <div style="background:#fff1f0; border:1px solid #ffa39e; padding:20px; border-radius:12px; margin-bottom:15px; font-family:sans-serif;">
         <div style="display:flex; justify-content:space-between; align-items:center;">
