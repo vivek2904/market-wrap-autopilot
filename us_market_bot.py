@@ -72,7 +72,7 @@ def build_report():
             <strong style="font-size:18px;">{s}</strong>
             <span style="color:#389e0d; font-size:20px; font-weight:bold;">+{v:.2f}%</span>
         </div>
-        <p style="margin:10px 0 0 0; font-size:13px; color:#555;"><strong>Sector Constituents:</strong> {', '.join(WATCHLIST.get(s, []))}</p>
+        <p style="margin:10px 0 0 0; font-size:13px; color:#555;"><strong>Sector Heavyweights:</strong> {', '.join(WATCHLIST.get(s, []))}</p>
     </div>
     ''' for s, v in top_3.items()])}
 
@@ -83,30 +83,40 @@ def build_report():
             <strong style="font-size:18px;">{s}</strong>
             <span style="color:#cf1322; font-size:20px; font-weight:bold;">{v:.2f}%</span>
         </div>
-        <p style="margin:10px 0 0 0; font-size:13px; color:#555;"><strong>Sector Constituents:</strong> {', '.join(WATCHLIST.get(s, []))}</p>
+        <p style="margin:10px 0 0 0; font-size:13px; color:#555;"><strong>Under Pressure:</strong> {', '.join(WATCHLIST.get(s, []))}</p>
     </div>
     ''' for s, v in bottom_3.items()])}
 
     <p style="margin-top:30px; font-size:14px; color:#888; text-align:center;">
-        <em>Disclaimer: Automation driven by Yahoo Finance data. Data may be delayed by 15-20 minutes.</em>
+        <em>Data source: Yahoo Finance. Updates automated for US Market Close.</em>
     </p>
     """
     return html, sp_change
 
 def post():
     content, change = build_report()
-    if not content: return
+    if content is None: return
     
     auth_str = f"{WP_USER}:{WP_PASS}"
     token = base64.b64encode(auth_str.encode()).decode('utf-8')
-    headers = {{'Authorization': f'Basic {{token}}', 'Content-Type': 'application/json'}}
     
-    payload = {{
-        'title': f"Wall Street Wrap: S&P 500 {{'Gains' if change > 0 else 'Slips'}} {change:.2f}% ({{datetime.now().strftime('%d %b')}})",
-        'content': content, 'status': 'publish', 'categories': [CATEGORY_ID]
-    }}
+    headers = {
+        'Authorization': f'Basic {token}',
+        'Content-Type': 'application/json'
+    }
+    
+    payload = {
+        'title': f"Wall Street Wrap: S&P 500 {'Gains' if change > 0 else 'Slips'} {change:.2f}% ({datetime.now().strftime('%d %b')})",
+        'content': content,
+        'status': 'publish',
+        'categories': [CATEGORY_ID]
+    }
+    
     res = requests.post(WP_URL, headers=headers, json=payload)
-    print("Post Created!" if res.status_code == 201 else f"Error: {{res.text}}")
+    if res.status_code == 201:
+        print("✅ US Market Post Created Successfully!")
+    else:
+        print(f"❌ Error: {res.status_code} - {res.text}")
 
 if __name__ == "__main__":
     post()
