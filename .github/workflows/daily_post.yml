@@ -11,9 +11,10 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.10' # <--- Updated this line
+          python-version: '3.10'
       - name: Install Libs
-        run: pip install requests nselib pandas lxml pandas_market_calendars
+        # We switched to nsepython and added curl/openssl for connectivity
+        run: pip install requests pandas nsepython lxml
       - name: Run Bot
         env:
           WP_USER: ${{ secrets.WP_USER }}
