@@ -16,7 +16,7 @@ SECTORS = {
     'XLRE': 'Real Estate', 'XLU': 'Utilities'
 }
 
-# Expanded Watchlist - 10 Stocks per Sector
+# FULL LIST OF 110 COMPANIES (10 per sector)
 WATCHLIST = {
     'Technology': ['AAPL', 'MSFT', 'NVDA', 'AVGO', 'ORCL', 'ADBE', 'CSCO', 'CRM', 'AMD', 'QCOM'],
     'Financials': ['JPM', 'V', 'MA', 'BAC', 'GS', 'MS', 'WFC', 'BLK', 'AXP', 'C'],
@@ -34,16 +34,10 @@ WATCHLIST = {
 def get_market_data():
     all_tickers = list(SECTORS.keys()) + ['^GSPC']
     raw_data = yf.download(all_tickers, period='5d', interval='1d', auto_adjust=True)
-    
-    # Access the 'Close' data (MultiIndex safe)
     data = raw_data['Close']
-    
-    # Calculate % change from previous close
     returns = (data.iloc[-1] / data.iloc[-2] - 1) * 100
-    
     sp_change = returns['^GSPC']
     direction = "Bulls Leading 🚀" if sp_change > 0 else "Bears in Control 🔻"
-    
     sector_returns = returns[list(SECTORS.keys())].rename(index=SECTORS)
     ranked = sector_returns.sort_values(ascending=False)
     return sp_change, direction, ranked
@@ -59,10 +53,13 @@ def build_report():
     bottom_3 = ranked.tail(3)
 
     html = f"""
-    <div style="background:#001529; color:white; padding:45px; border-radius:20px; text-align:center; font-family:sans-serif; margin-bottom:30px;">
-        <h1 style="color:#1890ff; margin:0; font-size:26px;">Wall Street Wrap: {datetime.now().strftime('%d %b %Y')}</h1>
-        <div style="font-size:64px; font-weight:800; margin:15px 0;">S&P 500: {sp_change:.2f}%</div>
-        <div style="font-size:22px; color:{'#52c41a' if sp_change > 0 else '#f5222d'};">{direction}</div>
+    <div style="background:#001529; color:white; padding:30px; border-radius:20px; text-align:center; font-family:sans-serif; margin-bottom:30px;">
+        <h1 style="color:#1890ff; margin:0; font-size:24px;">Wall Street Wrap: {datetime.now().strftime('%d %b %Y')}</h1>
+        <div style="margin:20px 0;">
+            <span style="font-size:24px; display:block; margin-bottom:5px; color:#8c8c8c;">S&P 500</span>
+            <span style="font-size:48px; font-weight:800; display:block;">{sp_change:.2f}%</span>
+        </div>
+        <div style="font-size:20px; color:{'#52c41a' if sp_change > 0 else '#f5222d'};">{direction}</div>
     </div>
 
     <h2 style="margin-top:40px; border-bottom:2px solid #333; padding-bottom:10px; color:#1a2b48;">🚀 Top Performing Sectors</h2>
@@ -88,7 +85,7 @@ def build_report():
     ''' for s, v in bottom_3.items()])}
 
     <p style="margin-top:30px; font-size:14px; color:#888; text-align:center;">
-        <em>Data source: Yahoo Finance. Updates automated for US Market Close.</em>
+        <em>Data source: Yahoo Finance.</em>
     </p>
     """
     return html, sp_change
@@ -96,27 +93,15 @@ def build_report():
 def post():
     content, change = build_report()
     if content is None: return
-    
     auth_str = f"{WP_USER}:{WP_PASS}"
     token = base64.b64encode(auth_str.encode()).decode('utf-8')
-    
-    headers = {
-        'Authorization': f'Basic {token}',
-        'Content-Type': 'application/json'
-    }
-    
+    headers = {'Authorization': f'Basic {token}', 'Content-Type': 'application/json'}
     payload = {
         'title': f"Wall Street Wrap: S&P 500 {'Gains' if change > 0 else 'Slips'} {change:.2f}% ({datetime.now().strftime('%d %b')})",
-        'content': content,
-        'status': 'publish',
-        'categories': [CATEGORY_ID]
+        'content': content, 'status': 'publish', 'categories': [CATEGORY_ID]
     }
-    
     res = requests.post(WP_URL, headers=headers, json=payload)
-    if res.status_code == 201:
-        print("✅ US Market Post Created Successfully!")
-    else:
-        print(f"❌ Error: {res.status_code} - {res.text}")
+    print("Success!" if res.status_code == 201 else f"Error: {res.text}")
 
 if __name__ == "__main__":
     post()
