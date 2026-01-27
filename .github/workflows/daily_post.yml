@@ -1,9 +1,9 @@
-name: Market Autopilot (9:07 PM IST)
+name: Market Autopilot (6:07 PM IST)
 
 on:
   schedule:
-    # 9:07 PM IST = 15:27 UTC
-    - cron: '37 15 * * *'
+    # 5:07 PM IST = 11:27 UTC
+    - cron: '27 11 * * *'
   workflow_dispatch:
 
 jobs:
