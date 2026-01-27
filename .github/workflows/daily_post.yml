@@ -1,19 +1,25 @@
-name: Market Autopilot (5:30 PM IST)
+name: Market Autopilot (8:47 PM IST)
+
 on:
   schedule:
-    - cron: '0 12 * * *'
+    # 8:57 PM IST = 15:27 UTC
+    - cron: '27 15 * * *'
   workflow_dispatch:
+
 jobs:
   post:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
+          
       - name: Install Libs
         run: pip install requests pandas lxml yfinance beautifulsoup4
+        
       - name: Run Bot
         env:
           WP_USER: ${{ secrets.WP_USER }}
