@@ -5,35 +5,23 @@ from bs4 import BeautifulSoup
 import io
 
 # --- SECURE CONFIG ---
-# These must be set in your GitHub Secrets
 WP_USER = os.environ.get('WP_USER')
 WP_PASS = os.environ.get('WP_PASS')
 WP_URL = os.environ.get('WP_URL')
 CATEGORY_ID = 12 
 
 # 1. COMPREHENSIVE SECTOR MAPPING (18+ INDICES)
+# Replaced .NS with ^CNX for better Yahoo Finance stability
 SECTORS = {
-    '^NSEI': 'NIFTY 50', 
-    '^NSEBANK': 'Nifty Bank', 
-    '^CNXIT': 'IT Services',
-    '^CNXAUTO': 'Automobile', 
-    '^CNXFMCG': 'FMCG', 
-    '^CNXMETAL': 'Metals',
-    '^CNXPHARMA': 'Pharma', 
-    '^CNXENERGY': 'Energy', 
-    '^CNXFIN': 'Financial Services',
-    '^CNXPSUBANK': 'PSU Bank', 
-    '^CNXREALTY': 'Realty', 
-    '^CNXMEDIA': 'Media',
-    '^CNXSERVICE': 'Services', 
-    '^CNXCONSUMP': 'Consumption', 
-    '^CNXINFRA': 'Infrastructure', 
-    '^CNXCOMMOD': 'Commodities', 
-    '^CNXPSE': 'PSE', 
-    '^CNXCPSE': 'CPSE'
+    '^NSEI': 'NIFTY 50', '^NSEBANK': 'Nifty Bank', '^CNXIT': 'IT Services',
+    '^CNXAUTO': 'Automobile', '^CNXFMCG': 'FMCG', '^CNXMETAL': 'Metals',
+    '^CNXPHARMA': 'Pharma', '^CNXENERGY': 'Energy', '^CNXFIN': 'Financial Services',
+    '^CNXPSUBANK': 'PSU Bank', '^CNXREALTY': 'Realty', '^CNXMEDIA': 'Media',
+    '^CNXSERVICE': 'Services', '^CNXCONSUMP': 'Consumption', '^CNXINFRA': 'Infrastructure', 
+    '^CNXCOMMOD': 'Commodities', '^CNXPSE': 'PSE', '^CNXCPSE': 'CPSE'
 }
 
-# 2. 10 UNIQUE HEAVYWEIGHTS FOR EVERY SINGLE SECTOR
+# 2. 10 UNIQUE HEAVYWEIGHTS FOR EVERY SECTOR
 WATCHLIST = {
     'Nifty Bank': ['HDFC Bank', 'ICICI Bank', 'SBI', 'Axis Bank', 'Kotak Bank', 'IndusInd Bank', 'Bank of Baroda', 'PNB', 'IDFC First', 'Federal Bank'],
     'IT Services': ['TCS', 'Infosys', 'HCL Tech', 'Wipro', 'Tech Mahindra', 'LTIMindtree', 'Persistent', 'Coforge', 'Mphasis', 'KPIT Tech'],
@@ -55,7 +43,7 @@ WATCHLIST = {
 }
 
 def get_valuation_and_summary():
-    """Scrapes India valuation metrics mirroring the US bot logic."""
+    """Scrapes India summary, PE, and Median Return data mirroring the US bot."""
     url = "https://worldperatio.com/area/india/"
     headers = {'User-Agent': 'Mozilla/5.0'}
     try:
@@ -71,15 +59,16 @@ def get_valuation_and_summary():
         pe_val, return_val, metrics_table_html = "22.85", "12.45%", ""
 
         for df in tables:
-            # Trailing P/E Table
+            # Trailing P/E Stats Table
             if 'Period' in df.columns and any('Average P/E' in col for col in df.columns):
                 pe_col = [c for c in df.columns if "vs" in str(c)]
                 if pe_col: pe_val = str(pe_col[0]).split("vs")[-1].strip()
                 metrics_table_html = df[['Period', 'Average P/E (μ)', 'Std Dev (σ)', 'vs Current P/E']].head(5).to_html(index=False, border=0, classes='valuation-table')
             
-            # Forward Return Table (1Y Median is in Column 6)
+            # Forward Return Table (1Y Median is in Column Index 6)
             if not df.empty and '1 Years' in str(df.iloc[:, 0].values):
                 try:
+                    # Grabbing the median return for a 1-year horizon
                     return_val = f"{df.iloc[0, 6]}%"
                 except: pass
 
@@ -91,12 +80,13 @@ def get_valuation_and_summary():
 def get_market_data():
     """Fetches NSE data and calculates clean daily returns."""
     raw_data = yf.download(list(SECTORS.keys()), period='5d', auto_adjust=True)['Close']
-    # Safety: Drop sectors that fail to download to prevent crash
+    # Filter out tickers that failed or contain NaNs to prevent crashes
     data = raw_data.dropna(axis=1, how='any').dropna(axis=0)
     
     if len(data) < 2:
         return None, None, None
 
+    # Calculate returns: Today's close vs. Yesterday's close
     returns = (data.iloc[-1] / data.iloc[-2] - 1) * 100
     price, change = data.iloc[-1]['^NSEI'], returns['^NSEI']
     ranked = returns.rename(index=SECTORS).sort_values(ascending=False)
@@ -110,7 +100,7 @@ def build_report():
     html = f"""
     <style>
         .market-card {{ font-family: 'Inter', -apple-system, sans-serif; max-width: 850px; margin: auto; color: #1e293b; }}
-        .header-box {{ background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; padding: 50px 25px; border-radius: 24px; text-align: center; margin-bottom: 30px; }}
+        .header-box {{ background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; padding: 50px 25px; border-radius: 24px; text-align: center; margin-bottom: 30px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); }}
         .nifty-price {{ font-size: 64px; font-weight: 800; display: block; line-height: 1; margin: 10px 0; }}
         .nifty-change {{ font-size: 24px; font-weight: 600; padding: 10px 20px; border-radius: 12px; display: inline-block; margin-top: 15px; }}
         
@@ -124,7 +114,7 @@ def build_report():
         .valuation-table td {{ padding: 14px; border-bottom: 1px solid #f1f5f9; color: #64748b; }}
 
         .disclaimer-box {{ background: #fff7ed; border: 1px solid #ffedd5; padding: 25px; border-radius: 16px; font-size: 13px; color: #9a3412; margin-top: 30px; line-height: 1.6; }}
-        .sector-pill {{ background: white; border: 1px solid #e2e8f0; padding: 25px; border-radius: 20px; margin-bottom: 15px; border-left: 10px solid; }}
+        .sector-pill {{ background: white; border: 1px solid #e2e8f0; padding: 25px; border-radius: 20px; margin-bottom: 15px; border-left: 10px solid; transition: transform 0.2s; }}
     </style>
 
     <div class="market-card">
@@ -155,7 +145,7 @@ def build_report():
 
             <div class="disclaimer-box">
                 <strong>📌 Statistical Note:</strong> The "1Y Median Forecast" is an automated projection derived from a 25-year statistical distribution of historical median returns for this valuation tier. It represents the central tendency of past data and is for analytical purposes only. <br><br>
-                <strong>⚠️ Disclaimer:</strong> This report is automated and does <u>NOT</u> constitute a buy call, financial advice, or investment recommendation. Market returns are subject to volatility. Consult a SEBI-registered advisor for investment decisions.
+                <strong>⚠️ Disclaimer:</strong> This update is automated for informational purposes only. It does <u>NOT</u> constitute a buy or sell call, financial advice, or an investment recommendation. Market returns are subject to volatility and past performance is not indicative of future results. Consult a SEBI-registered advisor before making investment decisions.
             </div>
         </div>
 
@@ -185,25 +175,26 @@ def build_report():
 def post():
     content, change = build_report()
     if content:
-        auth = base64.b64encode(f"{{WP_USER}}:{{WP_PASS}}".encode()).decode()
-        headers = {{'Authorization': f'Basic {{auth}}', 'Content-Type': 'application/json'}}
-        payload = {{
-            'title': f"Indian Market Wrap {{datetime.now().strftime('%d %b')}}: Nifty {{change:.2f}}%",
+        # Authentication
+        auth_string = f"{WP_USER}:{WP_PASS}"
+        token = base64.b64encode(auth_string.encode()).decode()
+        headers = {'Authorization': f'Basic {token}', 'Content-Type': 'application/json'}
+        
+        # Build Payload
+        payload = {
+            'title': f"Indian Market Wrap {datetime.now().strftime('%d %b')}: Nifty {change:.2f}%",
             'content': content,
             'status': 'publish',
             'categories': [CATEGORY_ID]
-        }}
-        # We manually use the variables here to avoid f-string payload issues
-        auth_str = base64.b64encode(f"{{WP_USER}}:{{WP_PASS}}".encode()).decode()
-        res = requests.post(WP_URL, 
-                            headers={{'Authorization': f'Basic {{auth_str}}', 'Content-Type': 'application/json'}}, 
-                            json={{
-                                'title': f"Indian Market Wrap {{datetime.now().strftime('%d %b')}}: Nifty {{change:.2f}}%",
-                                'content': content,
-                                'status': 'publish',
-                                'categories': [CATEGORY_ID]
-                            }})
-        print("✅ Post Success!" if res.status_code == 201 else f"❌ Error: {{res.text}}")
+        }
+        
+        # Execute POST request
+        res = requests.post(WP_URL, headers=headers, json=payload)
+        
+        if res.status_code == 201:
+            print(f"✅ Post Created! Title: {payload['title']}")
+        else:
+            print(f"❌ Error: {res.status_code} - {res.text}")
 
 if __name__ == "__main__":
     post()
