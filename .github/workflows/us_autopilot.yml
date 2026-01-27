@@ -3,7 +3,7 @@ name: US Market Autopilot (5 PM EST)
 on:
   schedule:
     # 5:00 PM EST is 10:00 PM UTC. This runs Monday to Friday.
-    - cron: '0 22 * * 1-5'
+    - cron: '38 16 * * 1-5'
   workflow_dispatch: # Allows you to trigger the bot manually for testing
 
 jobs:
