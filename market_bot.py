@@ -9,46 +9,35 @@ WP_PASS = os.environ.get('WP_PASS')
 WP_URL = os.environ.get('WP_URL')
 CATEGORY_ID = 12 
 
-# COMPREHENSIVE NSE SECTOR MAPPING
+# 1. COMPREHENSIVE SECTOR MAPPING
 SECTORS = {
-    '^NSEI': 'NIFTY 50',
-    '^NSEBANK': 'Nifty Bank',
-    '^CNXIT': 'IT Services',
-    '^CNXAUTO': 'Automobile',
-    '^CNXFMCG': 'FMCG',
-    '^CNXMETAL': 'Metals',
-    '^CNXPHARMA': 'Pharma',
-    '^CNXENERGY': 'Energy',
-    '^CNXFIN': 'Financial Services',
-    '^CNXPSUBANK': 'PSU Bank',
-    '^CNXREALTY': 'Realty',
-    '^CNXMEDIA': 'Media',
-    'NIFTY_PVT_BANK.NS': 'Private Bank',
-    'NIFTY_CON_DUR.NS': 'Consumer Durables',
-    'NIFTY_OIL_AND_GAS.NS': 'Oil & Gas',
-    'NIFTY_HEALTHCARE.NS': 'Healthcare',
-    'NIFTY_COMMODITIES.NS': 'Commodities',
-    'NIFTY_CPSE.NS': 'CPSE',
-    'NIFTY_PSE.NS': 'PSE',
-    'NIFTY_MNC.NS': 'MNC'
+    '^NSEI': 'NIFTY 50', '^NSEBANK': 'Nifty Bank', '^CNXIT': 'IT Services',
+    '^CNXAUTO': 'Automobile', '^CNXFMCG': 'FMCG', '^CNXMETAL': 'Metals',
+    '^CNXPHARMA': 'Pharma', '^CNXENERGY': 'Energy', '^CNXFIN': 'Financial Services',
+    '^CNXPSUBANK': 'PSU Bank', '^CNXREALTY': 'Realty', '^CNXMEDIA': 'Media',
+    '^CNXSERVICE': 'Services', '^CNXCONSUMP': 'Consumption', '^CNXINFRA': 'Infrastructure',
+    '^CNXCOMMOD': 'Commodities', '^CNXPSE': 'PSE', '^CNXCPSE': 'CPSE'
 }
 
-# Expanded Watchlist for All Sectors
+# 2. FULL HEAVYWEIGHT LIST FOR EVERY SECTOR
 WATCHLIST = {
-    'Banking': ['HDFC Bank', 'ICICI Bank', 'SBI', 'Axis Bank', 'Kotak Bank', 'IndusInd Bank', 'Bank of Baroda', 'PNB', 'IDFC First', 'Federal Bank'],
+    'Nifty Bank': ['HDFC Bank', 'ICICI Bank', 'SBI', 'Axis Bank', 'Kotak Bank', 'IndusInd Bank', 'Bank of Baroda', 'PNB', 'IDFC First', 'Federal Bank'],
     'IT Services': ['TCS', 'Infosys', 'HCL Tech', 'Wipro', 'Tech Mahindra', 'LTIMindtree', 'Persistent', 'Coforge', 'Mphasis', 'KPIT Tech'],
-    'PSU Bank': ['SBI', 'Bank of Baroda', 'Canara Bank', 'Union Bank', 'IOB', 'PNB', 'Indian Bank', 'Bank of India', 'UCO Bank', 'Central Bank'],
-    'Private Bank': ['HDFC Bank', 'ICICI Bank', 'Axis Bank', 'Kotak Bank', 'IndusInd Bank', 'IDFC First', 'Federal Bank', 'Bandhan Bank', 'RBL Bank', 'City Union'],
-    'Realty': ['DLF', 'Macrotech', 'Godrej Prop', 'Oberoi Realty', 'Prestige', 'Phoenix Mills', 'Brigade', 'Sobha', 'SignatureGlobal', 'Sunteck'],
+    'Automobile': ['M&M', 'Maruti', 'Tata Motors', 'Bajaj Auto', 'Eicher Motors', 'TVS Motor', 'Hero MotoCorp', 'Ashok Leyland', 'MRF', 'Balkrishna Ind'],
+    'FMCG': ['HUL', 'ITC', 'Nestle India', 'Britannia', 'Godrej CP', 'Dabur', 'Marico', 'Varun Beverages', 'Colgate', 'Tata Consumer'],
     'Metals': ['Tata Steel', 'JSW Steel', 'Hindalco', 'Jindal Steel', 'Vedanta', 'NMDC', 'SAIL', 'National Aluminium', 'APL Apollo', 'Ratnamani'],
     'Pharma': ['Sun Pharma', 'Cipla', 'Dr Reddys', 'Lupin', 'Aurobindo Pharma', 'Zydus Life', 'Divis Lab', 'Alkem', 'Torrent Pharma', 'Abbott'],
     'Energy': ['Reliance', 'NTPC', 'ONGC', 'Power Grid', 'BPCL', 'Adani Green', 'Tata Power', 'IOC', 'Gail', 'Adani Energy'],
-    'Automobile': ['M&M', 'Maruti', 'Tata Motors', 'Bajaj Auto', 'Eicher Motors', 'TVS Motor', 'Hero MotoCorp', 'Ashok Leyland', 'MRF', 'Balkrishna Ind'],
-    'FMCG': ['HUL', 'ITC', 'Nestle India', 'Britannia', 'Godrej CP', 'Dabur', 'Marico', 'Varun Beverages', 'Colgate', 'Tata Consumer'],
     'Financial Services': ['Bajaj Finance', 'HDFC Bank', 'ICICI Bank', 'Bajaj Finserv', 'Chola Inv', 'REC', 'PFC', 'Shriram Finance', 'SBI Life', 'HDFC Life'],
-    'Consumer Durables': ['Titan', 'Havells', 'Voltas', 'Blue Star', 'Dixon', 'Crompton Greaves', 'Amber Ent', 'Whirlpool', 'Rajesh Exports', 'Kajaria Ceramics'],
+    'PSU Bank': ['SBI', 'Bank of Baroda', 'Canara Bank', 'Union Bank', 'IOB', 'PNB', 'Indian Bank', 'Bank of India', 'UCO Bank', 'Central Bank'],
+    'Realty': ['DLF', 'Macrotech', 'Godrej Prop', 'Oberoi Realty', 'Prestige', 'Phoenix Mills', 'Brigade', 'Sobha', 'SignatureGlobal', 'Sunteck'],
     'Media': ['Zee Ent', 'Sun TV', 'PVR Inox', 'Network18', 'TV18 Broadcast', 'Nazara Tech', 'Dish TV', 'Hathway', 'Saregama', 'Tips Industries'],
-    'Oil & Gas': ['Reliance', 'ONGC', 'IOC', 'BPCL', 'GAIL', 'HPCL', 'Petronet LNG', 'Oil India', 'Gujarat Gas', 'IGL']
+    'Services': ['L&T', 'Adani Ports', 'Apollo Hosp', 'HDFC Life', 'SBI Life', 'Trend', 'Interglobe (IndiGo)', 'VBL', 'TATACOMM', 'GMR Infra'],
+    'Consumption': ['ITC', 'HUL', 'Titan', 'M&M', 'Asian Paints', 'Maruti', 'Nestle', 'Trent', 'DMart', 'Zomato'],
+    'Infrastructure': ['Reliance', 'L&T', 'Bharti Airtel', 'NTPC', 'Power Grid', 'Adani Port', 'UltraTech', 'ONGC', 'Grasim', 'IIFL'],
+    'Commodities': ['Reliance', 'Tata Steel', 'JSW Steel', 'HINDALCO', 'NTPC', 'ONGC', 'Ambuja Cement', 'Grasim', 'Vedanta', 'Coal India'],
+    'PSE': ['NTPC', 'ONGC', 'Power Grid', 'Coal India', 'BEL', 'HAL', 'BPCL', 'IOC', 'PFC', 'REC'],
+    'CPSE': ['NTPC', 'ONGC', 'Power Grid', 'Coal India', 'BEL', 'NHPC', 'SJVN', 'NBCC', 'Oil India', 'Cochin Shipyard']
 }
 
 def get_valuation_data():
@@ -63,21 +52,29 @@ def get_valuation_data():
         current_pe = pe_text.split("P/E Ratio:")[-1].strip() if pe_text else "22.85"
         tables = pd.read_html(response.text)
         metrics_df = tables[0].head(4)[['Period', 'Average P/E (μ)', 'Std Dev (σ)', 'vs Current']]
-        return insight_text, current_pe, metrics_df.to_html(index=False, border=0)
+        return insight_text, current_pe, metrics_df.to_html(index=False, border=0, classes='pe-table')
     except:
-        return "", "22.85", ""
+        return "Nifty 50 valuation metrics provide context for current market levels.", "22.85", ""
 
 def get_market_data():
     raw_data = yf.download(list(SECTORS.keys()), period='5d', auto_adjust=True)['Close']
-    data = raw_data.dropna(axis=1, how='all').dropna()
+    # Filter out tickers that failed or have NaNs to prevent 'out-of-bounds'
+    data = raw_data.dropna(axis=1, how='any').dropna(axis=0)
+    
+    if len(data) < 2:
+        return None, None, None
+
     returns = (data.iloc[-1] / data.iloc[-2] - 1) * 100
     price = data.iloc[-1]['^NSEI']
     change = returns['^NSEI']
+    
     ranked = returns.rename(index=SECTORS).sort_values(ascending=False)
     return price, change, ranked
 
 def build_report():
     price, change, ranked = get_market_data()
+    if price is None: return None, None
+    
     insight, pe, v_table = get_valuation_data()
 
     html = f"""
@@ -106,7 +103,7 @@ def build_report():
             <strong>{s}</strong><b style="color:#389e0d;">+{v:.2f}%</b>
         </div>
         <p style="margin:10px 0 0 0; font-size:12px; color:#666;"><b>Heavyweights:</b> {", ".join(WATCHLIST.get(s, ["Index Stocks"]))}</p>
-    </div>''' for s, v in ranked.head(5).items() if s != 'NIFTY 50'])}
+    </div>''' for s, v in ranked.head(4).items() if s != 'NIFTY 50'])}
 
     <h2 style="color:#1a2b48; border-bottom:2px solid #333; padding-bottom:8px; margin-top:30px;">🔻 Laggard Sectors</h2>
     {" ".join([f'''
@@ -121,14 +118,15 @@ def build_report():
 
 def post():
     content, change = build_report()
-    auth = base64.b64encode(f"{WP_USER}:{WP_PASS}".encode()).decode()
-    headers = {'Authorization': f'Basic {auth}', 'Content-Type': 'application/json'}
-    payload = {
-        'title': f"Indian Market Wrap {datetime.now().strftime('%d %b')}: Nifty {change:.2f}%",
-        'content': content, 'status': 'publish', 'categories': [CATEGORY_ID]
-    }
-    res = requests.post(WP_URL, headers=headers, json=payload)
-    print("Post Created!" if res.status_code == 201 else f"Error: {res.text}")
+    if content:
+        auth = base64.b64encode(f"{WP_USER}:{WP_PASS}".encode()).decode()
+        headers = {'Authorization': f'Basic {auth}', 'Content-Type': 'application/json'}
+        payload = {{
+            'title': f"Indian Market Wrap {datetime.now().strftime('%d %b')}: Nifty {change:.2f}%",
+            'content': content, 'status': 'publish', 'categories': [CATEGORY_ID]
+        }}
+        res = requests.post(WP_URL, headers=headers, json=payload)
+        print("✅ Post Created!" if res.status_code == 201 else f"❌ Error: {res.text}")
 
 if __name__ == "__main__":
     post()
