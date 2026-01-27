@@ -5,23 +5,35 @@ from bs4 import BeautifulSoup
 import io
 
 # --- SECURE CONFIG ---
+# These must be set in your GitHub Secrets
 WP_USER = os.environ.get('WP_USER')
 WP_PASS = os.environ.get('WP_PASS')
 WP_URL = os.environ.get('WP_URL')
 CATEGORY_ID = 12 
 
-# 1. THE COMPLETE 18+ SECTOR LIST
+# 1. COMPREHENSIVE SECTOR MAPPING (18+ INDICES)
 SECTORS = {
-    '^NSEI': 'NIFTY 50', '^NSEBANK': 'Nifty Bank', '^CNXIT': 'IT Services',
-    '^CNXAUTO': 'Automobile', '^CNXFMCG': 'FMCG', '^CNXMETAL': 'Metals',
-    '^CNXPHARMA': 'Pharma', '^CNXENERGY': 'Energy', '^CNXFIN': 'Financial Services',
-    '^CNXPSUBANK': 'PSU Bank', '^CNXREALTY': 'Realty', '^CNXMEDIA': 'Media',
-    '^CNXSERVICE': 'Services', 'NIFTY_CONSUMPTION.NS': 'Consumption', 
-    '^CNXINFRA': 'Infrastructure', 'NIFTY_COMMODITIES.NS': 'Commodities', 
-    '^CNXPSE': 'PSE', 'NIFTY_CPSE.NS': 'CPSE'
+    '^NSEI': 'NIFTY 50', 
+    '^NSEBANK': 'Nifty Bank', 
+    '^CNXIT': 'IT Services',
+    '^CNXAUTO': 'Automobile', 
+    '^CNXFMCG': 'FMCG', 
+    '^CNXMETAL': 'Metals',
+    '^CNXPHARMA': 'Pharma', 
+    '^CNXENERGY': 'Energy', 
+    '^CNXFIN': 'Financial Services',
+    '^CNXPSUBANK': 'PSU Bank', 
+    '^CNXREALTY': 'Realty', 
+    '^CNXMEDIA': 'Media',
+    '^CNXSERVICE': 'Services', 
+    '^CNXCONSUMP': 'Consumption', 
+    '^CNXINFRA': 'Infrastructure', 
+    '^CNXCOMMOD': 'Commodities', 
+    '^CNXPSE': 'PSE', 
+    '^CNXCPSE': 'CPSE'
 }
 
-# 2. 10 UNIQUE HEAVYWEIGHTS FOR EVERY SECTOR
+# 2. 10 UNIQUE HEAVYWEIGHTS FOR EVERY SINGLE SECTOR
 WATCHLIST = {
     'Nifty Bank': ['HDFC Bank', 'ICICI Bank', 'SBI', 'Axis Bank', 'Kotak Bank', 'IndusInd Bank', 'Bank of Baroda', 'PNB', 'IDFC First', 'Federal Bank'],
     'IT Services': ['TCS', 'Infosys', 'HCL Tech', 'Wipro', 'Tech Mahindra', 'LTIMindtree', 'Persistent', 'Coforge', 'Mphasis', 'KPIT Tech'],
@@ -43,30 +55,48 @@ WATCHLIST = {
 }
 
 def get_valuation_and_summary():
+    """Scrapes India valuation metrics mirroring the US bot logic."""
     url = "https://worldperatio.com/area/india/"
     headers = {'User-Agent': 'Mozilla/5.0'}
     try:
         response = requests.get(url, headers=headers, timeout=15)
         soup = BeautifulSoup(response.text, 'html.parser')
+        
+        # 1. Summary Extraction
         paragraphs = soup.find_all('p', limit=3)
         summary_text = " ".join([p.get_text() for p in paragraphs if len(p.get_text()) > 50])
+
+        # 2. Table Scraping for PE and Forward Return
         tables = pd.read_html(io.StringIO(response.text))
         pe_val, return_val, metrics_table_html = "22.85", "12.45%", ""
+
         for df in tables:
+            # Trailing P/E Table
             if 'Period' in df.columns and any('Average P/E' in col for col in df.columns):
                 pe_col = [c for c in df.columns if "vs" in str(c)]
                 if pe_col: pe_val = str(pe_col[0]).split("vs")[-1].strip()
                 metrics_table_html = df[['Period', 'Average P/E (μ)', 'Std Dev (σ)', 'vs Current P/E']].head(5).to_html(index=False, border=0, classes='valuation-table')
+            
+            # Forward Return Table (1Y Median is in Column 6)
             if not df.empty and '1 Years' in str(df.iloc[:, 0].values):
-                try: return_val = f"{df.iloc[0, 6]}%"
+                try:
+                    return_val = f"{df.iloc[0, 6]}%"
                 except: pass
+
         return summary_text, pe_val, return_val, metrics_table_html
-    except: return "Valuation metrics provide market context.", "22.85", "12.45%", ""
+    except Exception as e:
+        print(f"Scrape Error: {e}")
+        return "Market valuation metrics provide context for current market levels.", "22.85", "12.45%", ""
 
 def get_market_data():
+    """Fetches NSE data and calculates clean daily returns."""
     raw_data = yf.download(list(SECTORS.keys()), period='5d', auto_adjust=True)['Close']
+    # Safety: Drop sectors that fail to download to prevent crash
     data = raw_data.dropna(axis=1, how='any').dropna(axis=0)
-    if len(data) < 2: return None, None, None
+    
+    if len(data) < 2:
+        return None, None, None
+
     returns = (data.iloc[-1] / data.iloc[-2] - 1) * 100
     price, change = data.iloc[-1]['^NSEI'], returns['^NSEI']
     ranked = returns.rename(index=SECTORS).sort_values(ascending=False)
@@ -83,14 +113,18 @@ def build_report():
         .header-box {{ background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; padding: 50px 25px; border-radius: 24px; text-align: center; margin-bottom: 30px; }}
         .nifty-price {{ font-size: 64px; font-weight: 800; display: block; line-height: 1; margin: 10px 0; }}
         .nifty-change {{ font-size: 24px; font-weight: 600; padding: 10px 20px; border-radius: 12px; display: inline-block; margin-top: 15px; }}
+        
         .insight-box {{ background: #f8fafc; border: 1px solid #e2e8f0; padding: 30px; border-radius: 20px; color: #334155; font-size: 17px; line-height: 1.8; }}
         .stat-group {{ display: flex; gap: 40px; margin: 25px 0; padding: 20px; background: white; border-radius: 16px; border: 1px solid #e2e8f0; }}
-        .stat-val {{ font-size: 26px; font-weight: 800; color: #3b82f6; }}
+        .stat-label {{ font-size: 14px; color: #64748b; font-weight: 600; text-transform: uppercase; margin-bottom: 5px; }}
+        .stat-val {{ font-size: 28px; font-weight: 800; color: #3b82f6; }}
+        
         .valuation-table {{ width: 100%; border-collapse: collapse; margin-top: 25px; font-size: 15px; }}
         .valuation-table th {{ background: #f1f5f9; text-align: left; padding: 14px; border-bottom: 2px solid #e2e8f0; }}
-        .valuation-table td {{ padding: 14px; border-bottom: 1px solid #f1f5f9; }}
-        .disclaimer-box {{ background: #fff7ed; border: 1px solid #ffedd5; padding: 20px; border-radius: 16px; font-size: 13px; color: #9a3412; margin-top: 25px; line-height: 1.6; }}
-        .sector-pill {{ background: white; border: 1px solid #e2e8f0; padding: 25px; border-radius: 20px; margin-bottom: 15px; border-left: 8px solid; }}
+        .valuation-table td {{ padding: 14px; border-bottom: 1px solid #f1f5f9; color: #64748b; }}
+
+        .disclaimer-box {{ background: #fff7ed; border: 1px solid #ffedd5; padding: 25px; border-radius: 16px; font-size: 13px; color: #9a3412; margin-top: 30px; line-height: 1.6; }}
+        .sector-pill {{ background: white; border: 1px solid #e2e8f0; padding: 25px; border-radius: 20px; margin-bottom: 15px; border-left: 10px solid; }}
     </style>
 
     <div class="market-card">
@@ -103,25 +137,47 @@ def build_report():
         </div>
 
         <div class="insight-box">
-            <h3 style="margin-top:0; font-size:24px; color:#1e293b;">Valuation Analysis</h3>
+            <h3 style="margin-top:0; font-size:26px; color:#1e293b;">Valuation Analysis</h3>
             <p>{summary}</p>
-            <div class="stat-group">
-                <div style="display:flex; flex-direction:column;"><span style="font-size:14px; color:#64748b; font-weight:600;">CURRENT P/E</span><span class="stat-val">{pe}</span></div>
-                <div style="display:flex; flex-direction:column;"><span style="font-size:14px; color:#64748b; font-weight:600;">1Y MEDIAN FORECAST</span><span class="stat-val" style="color:#22c55e;">{target_return}</span></div>
-            </div>
-            <div style="overflow-x:auto;">{v_table}</div>
             
+            <div class="stat-group">
+                <div style="display:flex; flex-direction:column;">
+                    <span class="stat-label">Current P/E</span>
+                    <span class="stat-val">{pe}</span>
+                </div>
+                <div style="display:flex; flex-direction:column;">
+                    <span class="stat-label">1Y Median Forecast</span>
+                    <span class="stat-val" style="color:#22c55e;">{target_return}</span>
+                </div>
+            </div>
+
+            <div style="overflow-x:auto;">{v_table}</div>
+
             <div class="disclaimer-box">
                 <strong>📌 Statistical Note:</strong> The "1Y Median Forecast" is an automated projection derived from a 25-year statistical distribution of historical median returns for this valuation tier. It represents the central tendency of past data and is for analytical purposes only. <br><br>
-                <strong>⚠️ Disclaimer:</strong> This is an automated update and does <u>NOT</u> constitute a buy call, financial advice, or investment recommendation. Market returns are subject to volatility and past performance is not indicative of future results. Consult a SEBI-registered advisor for all investment decisions.
+                <strong>⚠️ Disclaimer:</strong> This report is automated and does <u>NOT</u> constitute a buy call, financial advice, or investment recommendation. Market returns are subject to volatility. Consult a SEBI-registered advisor for investment decisions.
             </div>
         </div>
 
-        <h2 style="font-size:26px; font-weight:800; color:#1e293b; margin:45px 0 25px;">🚀 Leading Sectors</h2>
-        {" ".join([f'''<div class="sector-pill" style="border-color: #22c55e;"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;"><span style="font-size:20px; font-weight:700;">{s}</span><span style="font-size:24px; font-weight:800; color:#16a34a;">+{v:.2f}%</span></div><div style="font-size:15px; color:#64748b;"><b>Key Constituents:</b> {", ".join(WATCHLIST.get(s, ["Major Index Components"]))}</div></div>''' for s, v in ranked.head(4).items() if s != 'NIFTY 50'])}
+        <h2 style="font-size:28px; font-weight:800; color:#1e293b; margin:45px 0 25px; border-left: 8px solid #22c55e; padding-left: 15px;">🚀 Leading Sectors</h2>
+        {" ".join([f'''
+        <div class="sector-pill" style="border-color: #22c55e;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <span style="font-size:22px; font-weight:700; color:#1e293b;">{s}</span>
+                <span style="font-size:26px; font-weight:800; color:#16a34a;">+{v:.2f}%</span>
+            </div>
+            <div style="font-size:15px; color:#64748b;"><b>Key Constituents:</b> {", ".join(WATCHLIST.get(s, ["Major Index Components"]))}</div>
+        </div>''' for s, v in ranked.head(4).items() if s != 'NIFTY 50'])}
 
-        <h2 style="font-size:26px; font-weight:800; color:#1e293b; margin:45px 0 25px;">🔻 Laggard Sectors</h2>
-        {" ".join([f'''<div class="sector-pill" style="border-color: #ef4444;"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;"><span style="font-size:20px; font-weight:700;">{s}</span><span style="font-size:24px; font-weight:800; color:#dc2626;">{v:.2f}%</span></div><div style="font-size:15px; color:#64748b;"><b>Under Pressure:</b> {", ".join(WATCHLIST.get(s, ["Major Index Components"]))}</div></div>''' for s, v in ranked.tail(3).items() if s != 'NIFTY 50'])}
+        <h2 style="font-size:28px; font-weight:800; color:#1e293b; margin:45px 0 25px; border-left: 8px solid #ef4444; padding-left: 15px;">🔻 Laggard Sectors</h2>
+        {" ".join([f'''
+        <div class="sector-pill" style="border-color: #ef4444;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <span style="font-size:22px; font-weight:700; color:#1e293b;">{s}</span>
+                <span style="font-size:26px; font-weight:800; color:#dc2626;">{v:.2f}%</span>
+            </div>
+            <div style="font-size:15px; color:#64748b;"><b>Under Pressure:</b> {", ".join(WATCHLIST.get(s, ["Major Index Components"]))}</div>
+        </div>''' for s, v in ranked.tail(3).items() if s != 'NIFTY 50'])}
     </div>
     """
     return html, change
@@ -129,10 +185,25 @@ def build_report():
 def post():
     content, change = build_report()
     if content:
-        auth = base64.b64encode(f"{WP_USER}:{WP_PASS}".encode()).decode()
-        headers = {'Authorization': f'Basic {auth}', 'Content-Type': 'application/json'}
-        payload = {'title': f"Indian Market Wrap {datetime.now().strftime('%d %b')}: Nifty {change:.2f}%", 'content': content, 'status': 'publish', 'categories': [CATEGORY_ID]}
-        res = requests.post(WP_URL, headers=headers, json=payload)
-        print("✅ Success" if res.status_code == 201 else f"❌ Error: {res.text}")
+        auth = base64.b64encode(f"{{WP_USER}}:{{WP_PASS}}".encode()).decode()
+        headers = {{'Authorization': f'Basic {{auth}}', 'Content-Type': 'application/json'}}
+        payload = {{
+            'title': f"Indian Market Wrap {{datetime.now().strftime('%d %b')}}: Nifty {{change:.2f}}%",
+            'content': content,
+            'status': 'publish',
+            'categories': [CATEGORY_ID]
+        }}
+        # We manually use the variables here to avoid f-string payload issues
+        auth_str = base64.b64encode(f"{{WP_USER}}:{{WP_PASS}}".encode()).decode()
+        res = requests.post(WP_URL, 
+                            headers={{'Authorization': f'Basic {{auth_str}}', 'Content-Type': 'application/json'}}, 
+                            json={{
+                                'title': f"Indian Market Wrap {{datetime.now().strftime('%d %b')}}: Nifty {{change:.2f}}%",
+                                'content': content,
+                                'status': 'publish',
+                                'categories': [CATEGORY_ID]
+                            }})
+        print("✅ Post Success!" if res.status_code == 201 else f"❌ Error: {{res.text}}")
 
-if __name__ == "__main__": post()
+if __name__ == "__main__":
+    post()
