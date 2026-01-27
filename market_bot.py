@@ -9,11 +9,11 @@ WP_PASS = os.environ.get('WP_PASS')
 WP_URL = os.environ.get('WP_URL')
 CATEGORY_ID = 12 
 
-# Corrected Indian Sector Mapping (Fixed IT Ticker)
+# Corrected Sector Mapping
 SECTORS = {
     '^NSEI': 'NIFTY 50', '^NSEBANK': 'Banking', '^CNXIT': 'IT Services',
     '^CNXAUTO': 'Automobile', '^CNXFMCG': 'FMCG', '^CNXMETAL': 'Metals',
-    '^CNXPHARMA': 'Healthcare', '^CNXENERGY': 'Oil & Gas', '^CNXFIN': 'Financial Services'
+    '^CNXPHARMA': 'Healthcare', '^CNXENERGY': 'Energy', '^CNXFIN': 'Financial Services'
 }
 
 WATCHLIST = {
@@ -21,18 +21,18 @@ WATCHLIST = {
     'IT Services': ['TCS', 'Infosys', 'HCL Tech', 'Wipro', 'Tech Mahindra', 'LTIMindtree', 'Persistent', 'Coforge', 'Mphasis', 'KPIT Tech'],
     'Financial Services': ['Bajaj Finance', 'Bajaj Finserv', 'Jio Financial', 'Chola Inv', 'REC Ltd', 'PFC', 'Shriram Fin', 'Muthoot', 'M&M Finance', 'HDFC Life'],
     'Healthcare': ['Sun Pharma', 'Cipla', 'Dr Reddys', 'Apollo Hospitals', 'Divis Lab', 'Zydus', 'Max Health', 'Torrent Pharma', 'Lupin', 'Aurobindo'],
-    'Oil & Gas': ['Reliance', 'ONGC', 'NTPC', 'Power Grid', 'BPCL', 'GAIL', 'IOC', 'Adani Total', 'Petronet LNG', 'Oil India']
+    'Energy': ['Reliance', 'ONGC', 'NTPC', 'Power Grid', 'BPCL', 'GAIL', 'IOC', 'Adani Total', 'Petronet LNG', 'Oil India']
 }
 
 def get_valuation_insights():
-    """Scrapes top text, current PE, and metrics table from worldperatio.com"""
+    """Scrapes top text, current PE, and metrics table from worldperatio.com/area/india/"""
     url = "https://www.worldperatio.com/area/india/"
     headers = {'User-Agent': 'Mozilla/5.0'}
     try:
         response = requests.get(url, headers=headers)
         soup = BeautifulSoup(response.text, 'html.parser')
         
-        # 1. Capture top 4-5 lines of text
+        # 1. Capture top text (Insight)
         paragraphs = soup.find_all('p')
         insight_text = " ".join([p.get_text() for p in paragraphs[:2]])
         if len(insight_text) > 400: insight_text = insight_text[:397] + "..."
@@ -47,24 +47,20 @@ def get_valuation_insights():
         
         return insight_text, current_pe, metrics_df.to_html(index=False, border=0, classes='pe-table')
     except:
-        return "Nifty 50 valuation provides a broad perspective on market conditions.", "22.85", "Data currently updating..."
+        return "Nifty 50 valuation provides a broad perspective on current market conditions.", "22.85", "Data updating..."
 
 def get_market_data():
+    """Fetches 2 days of data to calculate 'Today vs Yesterday' move."""
     tickers = list(SECTORS.keys())
-    # Pull 7 days to safely handle holidays like Republic Day
-    raw_data = yf.download(tickers, period='7d', interval='1d', auto_adjust=True)
+    raw_data = yf.download(tickers, period='2d', interval='1d', auto_adjust=True)
     
-    # Use 'Close' and drop columns that failed to download
-    data = raw_data['Close'].dropna(axis=1, how='all').dropna(axis=0)
+    # Clean data structure
+    data = raw_data['Close'].dropna(axis=1, how='all')
     
-    if data.empty or len(data) < 2:
-        return None, None, None
-
-    last_session = data.iloc[-1]
-    prev_session = data.iloc[-2]
+    # Calculate % change from previous close
+    returns = (data.iloc[-1] / data.iloc[-2] - 1) * 100
     
-    returns = (last_session / prev_session - 1) * 100
-    price = last_session['^NSEI']
+    price = data.iloc[-1]['^NSEI']
     change = returns['^NSEI']
     
     sector_returns = returns.rename(index=SECTORS)
@@ -75,12 +71,14 @@ def get_market_data():
 def build_report():
     try:
         price, change, ranked = get_market_data()
-        if price is None: return None, None
-        
         insight, pe, v_table = get_valuation_insights()
     except Exception as e:
-        print(f"Build Error: {e}")
+        print(f"Error building report: {e}")
         return None, None
+
+    # Identify winners and losers
+    top_3 = ranked.head(4)
+    bottom_3 = ranked.tail(3)
 
     html = f"""
     <div style="background:linear-gradient(135deg, #001529 0%, #003366 100%); color:white; padding:30px; border-radius:20px; text-align:center; font-family:sans-serif; margin-bottom:30px;">
@@ -108,8 +106,8 @@ def build_report():
             <strong>{s}</strong>
             <b style="color:#389e0d;">+{v:.2f}%</b>
         </div>
-        <p style="margin:8px 0 0 0; font-size:12px; color:#666;"><b>Heavyweights:</b> {", ".join(WATCHLIST.get(s, ["Major Sector Stocks"]))}</p>
-    </div>''' for s, v in ranked.head(4).items() if s != 'NIFTY 50'])}
+        <p style="margin:8px 0 0 0; font-size:12px; color:#666;"><b>Heavyweights:</b> {", ".join(WATCHLIST.get(s, ["Major Stocks"]))}</p>
+    </div>''' for s, v in top_3.items() if s != 'NIFTY 50'])}
 
     <h2 style="color:#1a2b48; border-bottom:2px solid #333; padding-bottom:8px; margin-top:30px; font-family:sans-serif;">🔻 Laggard Sectors</h2>
     {" ".join([f'''
@@ -118,8 +116,12 @@ def build_report():
             <strong>{s}</strong>
             <b style="color:#cf1322;">{v:.2f}%</b>
         </div>
-        <p style="margin:8px 0 0 0; font-size:12px; color:#666;"><b>Under Pressure:</b> {", ".join(WATCHLIST.get(s, ["Major Sector Stocks"]))}</p>
-    </div>''' for s, v in ranked.tail(3).items() if s != 'NIFTY 50'])}
+        <p style="margin:8px 0 0 0; font-size:12px; color:#666;"><b>Under Pressure:</b> {", ".join(WATCHLIST.get(s, ["Major Stocks"]))}</p>
+    </div>''' for s, v in bottom_3.items() if s != 'NIFTY 50'])}
+
+    <p style="margin-top:30px; font-size:14px; color:#888; text-align:center;">
+        <em>Data source: Yahoo Finance & WorldPERatio.</em>
+    </p>
     """
     return html, change
 
@@ -133,7 +135,7 @@ def post():
             'content': content, 'status': 'publish', 'categories': [CATEGORY_ID]
         }
         res = requests.post(WP_URL, headers=headers, json=payload)
-        print("Success!" if res.status_code == 201 else f"Error: {res.text}")
+        print("✅ Post Created Successfully!" if res.status_code == 201 else f"❌ Error: {res.text}")
 
 if __name__ == "__main__":
     post()
