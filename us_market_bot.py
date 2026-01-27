@@ -10,7 +10,7 @@ WP_PASS = os.environ.get('WP_PASS')
 WP_URL = os.environ.get('WP_URL')
 CATEGORY_ID = 12 
 
-# 1. THE COMPLETE 18+ SECTOR LIST (Corrected Tickers)
+# 1. THE COMPLETE 18+ SECTOR LIST
 SECTORS = {
     '^NSEI': 'NIFTY 50', '^NSEBANK': 'Nifty Bank', '^CNXIT': 'IT Services',
     '^CNXAUTO': 'Automobile', '^CNXFMCG': 'FMCG', '^CNXMETAL': 'Metals',
@@ -21,7 +21,7 @@ SECTORS = {
     '^CNXPSE': 'PSE', 'NIFTY_CPSE.NS': 'CPSE'
 }
 
-# 2. 10 UNIQUE HEAVYWEIGHTS FOR ALL SECTORS
+# 2. 10 UNIQUE HEAVYWEIGHTS FOR EVERY SECTOR
 WATCHLIST = {
     'Nifty Bank': ['HDFC Bank', 'ICICI Bank', 'SBI', 'Axis Bank', 'Kotak Bank', 'IndusInd Bank', 'Bank of Baroda', 'PNB', 'IDFC First', 'Federal Bank'],
     'IT Services': ['TCS', 'Infosys', 'HCL Tech', 'Wipro', 'Tech Mahindra', 'LTIMindtree', 'Persistent', 'Coforge', 'Mphasis', 'KPIT Tech'],
@@ -79,7 +79,7 @@ def build_report():
 
     html = f"""
     <style>
-        .market-card {{ font-family: 'Inter', -apple-system, sans-serif; max-width: 850px; margin: auto; }}
+        .market-card {{ font-family: 'Inter', -apple-system, sans-serif; max-width: 850px; margin: auto; color: #1e293b; }}
         .header-box {{ background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; padding: 50px 25px; border-radius: 24px; text-align: center; margin-bottom: 30px; }}
         .nifty-price {{ font-size: 64px; font-weight: 800; display: block; line-height: 1; margin: 10px 0; }}
         .nifty-change {{ font-size: 24px; font-weight: 600; padding: 10px 20px; border-radius: 12px; display: inline-block; margin-top: 15px; }}
@@ -89,7 +89,7 @@ def build_report():
         .valuation-table {{ width: 100%; border-collapse: collapse; margin-top: 25px; font-size: 15px; }}
         .valuation-table th {{ background: #f1f5f9; text-align: left; padding: 14px; border-bottom: 2px solid #e2e8f0; }}
         .valuation-table td {{ padding: 14px; border-bottom: 1px solid #f1f5f9; }}
-        .disclaimer {{ background: #fffbeb; border: 1px solid #fef3c7; padding: 20px; border-radius: 16px; font-size: 13px; color: #92400e; margin-top: 25px; }}
+        .disclaimer-box {{ background: #fff7ed; border: 1px solid #ffedd5; padding: 20px; border-radius: 16px; font-size: 13px; color: #9a3412; margin-top: 25px; line-height: 1.6; }}
         .sector-pill {{ background: white; border: 1px solid #e2e8f0; padding: 25px; border-radius: 20px; margin-bottom: 15px; border-left: 8px solid; }}
     </style>
 
@@ -110,9 +110,10 @@ def build_report():
                 <div style="display:flex; flex-direction:column;"><span style="font-size:14px; color:#64748b; font-weight:600;">1Y MEDIAN FORECAST</span><span class="stat-val" style="color:#22c55e;">{target_return}</span></div>
             </div>
             <div style="overflow-x:auto;">{v_table}</div>
-            <div class="disclaimer">
-                <strong>Statistical Note:</strong> The "1Y Median Forecast" is a historical projection based on 25 years of median returns at this valuation level. <br><br>
-                <strong>Disclaimer:</strong> This automated report is for information only and is NOT financial advice. Always consult a professional before investing.
+            
+            <div class="disclaimer-box">
+                <strong>📌 Statistical Note:</strong> The "1Y Median Forecast" is an automated projection derived from a 25-year statistical distribution of historical median returns for this valuation tier. It represents the central tendency of past data and is for analytical purposes only. <br><br>
+                <strong>⚠️ Disclaimer:</strong> This is an automated update and does <u>NOT</u> constitute a buy call, financial advice, or investment recommendation. Market returns are subject to volatility and past performance is not indicative of future results. Consult a SEBI-registered advisor for all investment decisions.
             </div>
         </div>
 
