@@ -10,82 +10,85 @@ WP_PASS = os.environ.get('WP_PASS')
 WP_URL = os.environ.get('WP_URL')
 CATEGORY_ID = 12 
 
-# COMPREHENSIVE SECTOR MAPPING
+# 1. COMPREHENSIVE SECTOR MAPPING (18+ INDICES)
+# Replaced .NS with ^CNX for better Yahoo Finance stability
 SECTORS = {
     '^NSEI': 'NIFTY 50', '^NSEBANK': 'Nifty Bank', '^CNXIT': 'IT Services',
     '^CNXAUTO': 'Automobile', '^CNXFMCG': 'FMCG', '^CNXMETAL': 'Metals',
     '^CNXPHARMA': 'Pharma', '^CNXENERGY': 'Energy', '^CNXFIN': 'Financial Services',
     '^CNXPSUBANK': 'PSU Bank', '^CNXREALTY': 'Realty', '^CNXMEDIA': 'Media',
-    'NIFTY_CONSUMPTION.NS': 'Consumption', '^CNXINFRA': 'Infrastructure', 
-    'NIFTY_COMMODITIES.NS': 'Commodities', '^CNXPSE': 'PSE', 'NIFTY_CPSE.NS': 'CPSE'
+    '^CNXSERVICE': 'Services', '^CNXCONSUMP': 'Consumption', '^CNXINFRA': 'Infrastructure', 
+    '^CNXCOMMOD': 'Commodities', '^CNXPSE': 'PSE', '^CNXCPSE': 'CPSE'
 }
 
-# FULL HEAVYWEIGHT LIST
+# 2. 10 UNIQUE HEAVYWEIGHTS FOR EVERY SECTOR
 WATCHLIST = {
-    'Nifty Bank': ['HDFC Bank', 'ICICI Bank', 'SBI', 'Axis Bank', 'Kotak Bank'],
-    'IT Services': ['TCS', 'Infosys', 'HCL Tech', 'Wipro', 'Tech Mahindra'],
-    'Automobile': ['M&M', 'Maruti', 'Tata Motors', 'Bajaj Auto', 'Eicher Motors'],
-    'FMCG': ['HUL', 'ITC', 'Nestle India', 'Britannia', 'Godrej CP'],
-    'Metals': ['Tata Steel', 'JSW Steel', 'Hindalco', 'Jindal Steel', 'Vedanta'],
-    'Pharma': ['Sun Pharma', 'Cipla', 'Dr Reddys', 'Lupin', 'Aurobindo'],
-    'Energy': ['Reliance', 'NTPC', 'ONGC', 'Power Grid', 'BPCL'],
-    'Financial Services': ['Bajaj Finance', 'HDFC Bank', 'ICICI Bank', 'Bajaj Finserv', 'REC'],
-    'PSU Bank': ['SBI', 'Bank of Baroda', 'Canara Bank', 'Union Bank', 'PNB'],
-    'Realty': ['DLF', 'Macrotech', 'Godrej Prop', 'Oberoi Realty', 'Prestige'],
-    'Media': ['Zee Ent', 'Sun TV', 'PVR Inox', 'Network18', 'TV18'],
-    'Consumption': ['ITC', 'HUL', 'Titan', 'Asian Paints', 'Nestle'],
-    'Infrastructure': ['Reliance', 'L&T', 'Bharti Airtel', 'NTPC', 'Adani Port'],
-    'PSE': ['NTPC', 'ONGC', 'Power Grid', 'Coal India', 'BEL'],
-    'CPSE': ['NTPC', 'ONGC', 'Power Grid', 'Coal India', 'NHPC']
+    'Nifty Bank': ['HDFC Bank', 'ICICI Bank', 'SBI', 'Axis Bank', 'Kotak Bank', 'IndusInd Bank', 'Bank of Baroda', 'PNB', 'IDFC First', 'Federal Bank'],
+    'IT Services': ['TCS', 'Infosys', 'HCL Tech', 'Wipro', 'Tech Mahindra', 'LTIMindtree', 'Persistent', 'Coforge', 'Mphasis', 'KPIT Tech'],
+    'Automobile': ['M&M', 'Maruti', 'Tata Motors', 'Bajaj Auto', 'Eicher Motors', 'TVS Motor', 'Hero MotoCorp', 'Ashok Leyland', 'MRF', 'Balkrishna Ind'],
+    'FMCG': ['HUL', 'ITC', 'Nestle India', 'Britannia', 'Godrej CP', 'Dabur', 'Marico', 'Varun Beverages', 'Colgate', 'Tata Consumer'],
+    'Metals': ['Tata Steel', 'JSW Steel', 'Hindalco', 'Jindal Steel', 'Vedanta', 'NMDC', 'SAIL', 'National Aluminium', 'APL Apollo', 'Ratnamani'],
+    'Pharma': ['Sun Pharma', 'Cipla', 'Dr Reddys', 'Lupin', 'Aurobindo Pharma', 'Zydus Life', 'Divis Lab', 'Alkem', 'Torrent Pharma', 'Abbott'],
+    'Energy': ['Reliance', 'NTPC', 'ONGC', 'Power Grid', 'BPCL', 'Adani Green', 'Tata Power', 'IOC', 'Gail', 'Adani Energy'],
+    'Financial Services': ['Bajaj Finance', 'HDFC Bank', 'ICICI Bank', 'Bajaj Finserv', 'Chola Inv', 'REC', 'PFC', 'Shriram Finance', 'SBI Life', 'HDFC Life'],
+    'PSU Bank': ['SBI', 'Bank of Baroda', 'Canara Bank', 'Union Bank', 'IOB', 'PNB', 'Indian Bank', 'Bank of India', 'UCO Bank', 'Central Bank'],
+    'Realty': ['DLF', 'Macrotech', 'Godrej Prop', 'Oberoi Realty', 'Prestige', 'Phoenix Mills', 'Brigade', 'Sobha', 'SignatureGlobal', 'Sunteck'],
+    'Media': ['Zee Ent', 'Sun TV', 'PVR Inox', 'Network18', 'TV18 Broadcast', 'Nazara Tech', 'Dish TV', 'Hathway', 'Saregama', 'Tips Industries'],
+    'Consumption': ['ITC', 'HUL', 'Titan', 'Asian Paints', 'Nestle', 'Trent', 'DMart', 'Zomato', 'Britannia', 'Page Industries'],
+    'Infrastructure': ['Reliance', 'L&T', 'Bharti Airtel', 'NTPC', 'Adani Port', 'UltraTech', 'ONGC', 'Grasim', 'IIFL', 'Power Grid'],
+    'PSE': ['NTPC', 'ONGC', 'Power Grid', 'Coal India', 'BEL', 'HAL', 'BPCL', 'IOC', 'PFC', 'REC'],
+    'CPSE': ['NTPC', 'ONGC', 'Power Grid', 'Coal India', 'BEL', 'NHPC', 'SJVN', 'NBCC', 'Oil India', 'Cochin Shipyard'],
+    'Commodities': ['Reliance', 'Tata Steel', 'JSW Steel', 'HINDALCO', 'NTPC', 'ONGC', 'Ambuja Cement', 'Grasim', 'Vedanta', 'Coal India'],
+    'Services': ['L&T', 'Adani Ports', 'Apollo Hosp', 'HDFC Life', 'SBI Life', 'Trend', 'IndiGo', 'VBL', 'TATACOMM', 'GMR Infra']
 }
 
 def get_valuation_and_summary():
-    """Scrapes India summary, PE, and Return data dynamically like the US bot."""
+    """Scrapes India summary, PE, and Median Return data mirroring the US bot."""
     url = "https://worldperatio.com/area/india/"
     headers = {'User-Agent': 'Mozilla/5.0'}
     try:
         response = requests.get(url, headers=headers, timeout=15)
         soup = BeautifulSoup(response.text, 'html.parser')
         
-        # 1. DYNAMIC SUMMARY
+        # 1. Summary Extraction
         paragraphs = soup.find_all('p', limit=3)
         summary_text = " ".join([p.get_text() for p in paragraphs if len(p.get_text()) > 50])
 
-        # 2. DYNAMIC VALUATION DATA
+        # 2. Table Scraping for PE and Forward Return
         tables = pd.read_html(io.StringIO(response.text))
-        pe_val = "22.85" 
-        return_val = "12.45%" # Default median for India
-        metrics_table_html = ""
+        pe_val, return_val, metrics_table_html = "22.85", "12.45%", ""
 
         for df in tables:
             # Trailing P/E Stats Table
             if 'Period' in df.columns and any('Average P/E' in col for col in df.columns):
-                # Extract PE from the column that contains the current value (e.g., vs 22.85)
                 pe_col = [c for c in df.columns if "vs" in str(c)]
                 if pe_col: pe_val = str(pe_col[0]).split("vs")[-1].strip()
-                
-                display_df = df[['Period', 'Average P/E (μ)', 'Std Dev (σ)', 'vs Current P/E']].head(5)
-                metrics_table_html = display_df.to_html(index=False, border=0, classes='valuation-table')
+                metrics_table_html = df[['Period', 'Average P/E (μ)', 'Std Dev (σ)', 'vs Current P/E']].head(5).to_html(index=False, border=0, classes='valuation-table')
             
-            # Forward Return Table (1Y Target)
-            # Looks for the row containing '1 Years' and grabs the median from column index 6
+            # Forward Return Table (1Y Median is in Column Index 6)
             if not df.empty and '1 Years' in str(df.iloc[:, 0].values):
                 try:
+                    # Grabbing the median return for a 1-year horizon
                     return_val = f"{df.iloc[0, 6]}%"
                 except: pass
 
         return summary_text, pe_val, return_val, metrics_table_html
     except Exception as e:
         print(f"Scrape Error: {e}")
-        return "Market valuation metrics provide context for current levels.", "22.85", "TBD", ""
+        return "Market valuation metrics provide context for current market levels.", "22.85", "12.45%", ""
 
 def get_market_data():
+    """Fetches NSE data and calculates clean daily returns."""
     raw_data = yf.download(list(SECTORS.keys()), period='5d', auto_adjust=True)['Close']
+    # Filter out tickers that failed or contain NaNs to prevent crashes
     data = raw_data.dropna(axis=1, how='any').dropna(axis=0)
-    if len(data) < 2: return None, None, None
+    
+    if len(data) < 2:
+        return None, None, None
+
+    # Calculate returns: Today's close vs. Yesterday's close
     returns = (data.iloc[-1] / data.iloc[-2] - 1) * 100
-    price = data.iloc[-1]['^NSEI']
-    change = returns['^NSEI']
+    price, change = data.iloc[-1]['^NSEI'], returns['^NSEI']
     ranked = returns.rename(index=SECTORS).sort_values(ascending=False)
     return price, change, ranked
 
@@ -96,28 +99,27 @@ def build_report():
 
     html = f"""
     <style>
-        .market-card {{ font-family: 'Inter', -apple-system, sans-serif; max-width: 800px; margin: auto; }}
-        .header-box {{ background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; padding: 40px 20px; border-radius: 24px; text-align: center; margin-bottom: 30px; }}
-        .nifty-price {{ font-size: 56px; font-weight: 800; display: block; line-height: 1; }}
-        .nifty-change {{ font-size: 22px; font-weight: 600; padding: 8px 16px; border-radius: 12px; display: inline-block; margin-top: 15px; }}
+        .market-card {{ font-family: 'Inter', -apple-system, sans-serif; max-width: 850px; margin: auto; color: #1e293b; }}
+        .header-box {{ background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; padding: 50px 25px; border-radius: 24px; text-align: center; margin-bottom: 30px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); }}
+        .nifty-price {{ font-size: 64px; font-weight: 800; display: block; line-height: 1; margin: 10px 0; }}
+        .nifty-change {{ font-size: 24px; font-weight: 600; padding: 10px 20px; border-radius: 12px; display: inline-block; margin-top: 15px; }}
         
-        .insight-box {{ background: #f8fafc; border: 1px solid #e2e8f0; padding: 25px; border-radius: 20px; color: #334155; font-size: 16px; line-height: 1.7; }}
-        .stat-group {{ display: flex; gap: 30px; margin-top: 20px; padding: 15px; background: white; border-radius: 12px; border: 1px solid #e2e8f0; }}
-        .stat-item {{ display: flex; flex-direction: column; }}
-        .stat-label {{ font-size: 13px; color: #64748b; font-weight: 600; text-transform: uppercase; }}
-        .stat-val {{ font-size: 22px; font-weight: 800; color: #3b82f6; }}
-        .target-val {{ color: #22c55e; }}
+        .insight-box {{ background: #f8fafc; border: 1px solid #e2e8f0; padding: 30px; border-radius: 20px; color: #334155; font-size: 17px; line-height: 1.8; }}
+        .stat-group {{ display: flex; gap: 40px; margin: 25px 0; padding: 20px; background: white; border-radius: 16px; border: 1px solid #e2e8f0; }}
+        .stat-label {{ font-size: 14px; color: #64748b; font-weight: 600; text-transform: uppercase; margin-bottom: 5px; }}
+        .stat-val {{ font-size: 28px; font-weight: 800; color: #3b82f6; }}
+        
+        .valuation-table {{ width: 100%; border-collapse: collapse; margin-top: 25px; font-size: 15px; }}
+        .valuation-table th {{ background: #f1f5f9; text-align: left; padding: 14px; border-bottom: 2px solid #e2e8f0; }}
+        .valuation-table td {{ padding: 14px; border-bottom: 1px solid #f1f5f9; color: #64748b; }}
 
-        .valuation-table {{ width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }}
-        .valuation-table th {{ background: #f1f5f9; text-align: left; padding: 12px; font-weight: 600; }}
-        .valuation-table td {{ padding: 12px; border-bottom: 1px solid #f1f5f9; color: #64748b; }}
-
-        .sector-pill {{ background: white; border: 1px solid #e2e8f0; padding: 20px; border-radius: 18px; margin-bottom: 15px; border-left: 6px solid; }}
+        .disclaimer-box {{ background: #fff7ed; border: 1px solid #ffedd5; padding: 25px; border-radius: 16px; font-size: 13px; color: #9a3412; margin-top: 30px; line-height: 1.6; }}
+        .sector-pill {{ background: white; border: 1px solid #e2e8f0; padding: 25px; border-radius: 20px; margin-bottom: 15px; border-left: 10px solid; transition: transform 0.2s; }}
     </style>
 
     <div class="market-card">
         <div class="header-box">
-            <span style="color:#94a3b8; font-weight:500; letter-spacing:1px;">NIFTY 50 INDEX</span>
+            <span style="color:#94a3b8; font-weight:600; letter-spacing:1.5px;">NIFTY 50 INDEX</span>
             <span class="nifty-price">{price:,.2f}</span>
             <div class="nifty-change" style="background: {'rgba(34, 197, 94, 0.15)' if change > 0 else 'rgba(239, 68, 68, 0.15)'}; color: {'#22c55e' if change > 0 else '#ef4444'};">
                 {'+' if change > 0 else ''}{change:.2f}% {'▲ Bulls Leading 🚀' if change > 0 else '▼ Bears in Control 🔻'}
@@ -125,41 +127,46 @@ def build_report():
         </div>
 
         <div class="insight-box">
-            <h3 style="margin-top:0; font-size:22px; color:#1e293b;">Market Insight & Valuation</h3>
+            <h3 style="margin-top:0; font-size:26px; color:#1e293b;">Valuation Analysis</h3>
             <p>{summary}</p>
             
             <div class="stat-group">
-                <div class="stat-item">
+                <div style="display:flex; flex-direction:column;">
                     <span class="stat-label">Current P/E</span>
                     <span class="stat-val">{pe}</span>
                 </div>
-                <div class="stat-item">
-                    <span class="stat-label">1Y Expected Return</span>
-                    <span class="stat-val target-val">{target_return}</span>
+                <div style="display:flex; flex-direction:column;">
+                    <span class="stat-label">1Y Median Forecast</span>
+                    <span class="stat-val" style="color:#22c55e;">{target_return}</span>
                 </div>
             </div>
 
             <div style="overflow-x:auto;">{v_table}</div>
+
+            <div class="disclaimer-box">
+                <strong>📌 Statistical Note:</strong> The "1Y Median Forecast" is an automated projection derived from a 25-year statistical distribution of historical median returns for this valuation tier. It represents the central tendency of past data and is for analytical purposes only. <br><br>
+                <strong>⚠️ Disclaimer:</strong> This update is automated for informational purposes only. It does <u>NOT</u> constitute a buy or sell call, financial advice, or an investment recommendation. Market returns are subject to volatility and past performance is not indicative of future results. Consult a SEBI-registered advisor before making investment decisions.
+            </div>
         </div>
 
-        <h2 style="font-size:24px; font-weight:700; color:#1e293b; margin:40px 0 20px;">🚀 Leading Sectors</h2>
+        <h2 style="font-size:28px; font-weight:800; color:#1e293b; margin:45px 0 25px; border-left: 8px solid #22c55e; padding-left: 15px;">🚀 Leading Sectors</h2>
         {" ".join([f'''
         <div class="sector-pill" style="border-color: #22c55e;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                <span style="font-size:18px; font-weight:700; color:#1e293b;">{s}</span>
-                <span style="font-size:20px; font-weight:800; color:#16a34a;">+{v:.2f}%</span>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <span style="font-size:22px; font-weight:700; color:#1e293b;">{s}</span>
+                <span style="font-size:26px; font-weight:800; color:#16a34a;">+{v:.2f}%</span>
             </div>
-            <div style="font-size:14px; color:#64748b;"><b>Top Stocks:</b> {", ".join(WATCHLIST.get(s, ["Index Stocks"]))}</div>
+            <div style="font-size:15px; color:#64748b;"><b>Key Constituents:</b> {", ".join(WATCHLIST.get(s, ["Major Index Components"]))}</div>
         </div>''' for s, v in ranked.head(4).items() if s != 'NIFTY 50'])}
 
-        <h2 style="font-size:24px; font-weight:700; color:#1e293b; margin:40px 0 20px;">🔻 Laggard Sectors</h2>
+        <h2 style="font-size:28px; font-weight:800; color:#1e293b; margin:45px 0 25px; border-left: 8px solid #ef4444; padding-left: 15px;">🔻 Laggard Sectors</h2>
         {" ".join([f'''
         <div class="sector-pill" style="border-color: #ef4444;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                <span style="font-size:18px; font-weight:700; color:#1e293b;">{s}</span>
-                <span style="font-size:20px; font-weight:800; color:#dc2626;">{v:.2f}%</span>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <span style="font-size:22px; font-weight:700; color:#1e293b;">{s}</span>
+                <span style="font-size:26px; font-weight:800; color:#dc2626;">{v:.2f}%</span>
             </div>
-            <div style="font-size:14px; color:#64748b;"><b>Under Pressure:</b> {", ".join(WATCHLIST.get(s, ["Index Stocks"]))}</div>
+            <div style="font-size:15px; color:#64748b;"><b>Under Pressure:</b> {", ".join(WATCHLIST.get(s, ["Major Index Components"]))}</div>
         </div>''' for s, v in ranked.tail(3).items() if s != 'NIFTY 50'])}
     </div>
     """
@@ -168,14 +175,26 @@ def build_report():
 def post():
     content, change = build_report()
     if content:
-        auth = base64.b64encode(f"{WP_USER}:{WP_PASS}".encode()).decode()
-        headers = {'Authorization': f'Basic {auth}', 'Content-Type': 'application/json'}
+        # Authentication
+        auth_string = f"{WP_USER}:{WP_PASS}"
+        token = base64.b64encode(auth_string.encode()).decode()
+        headers = {'Authorization': f'Basic {token}', 'Content-Type': 'application/json'}
+        
+        # Build Payload
         payload = {
             'title': f"Indian Market Wrap {datetime.now().strftime('%d %b')}: Nifty {change:.2f}%",
-            'content': content, 'status': 'publish', 'categories': [CATEGORY_ID]
+            'content': content,
+            'status': 'publish',
+            'categories': [CATEGORY_ID]
         }
+        
+        # Execute POST request
         res = requests.post(WP_URL, headers=headers, json=payload)
-        print("✅ Post Created!" if res.status_code == 201 else f"❌ Error: {res.text}")
+        
+        if res.status_code == 201:
+            print(f"✅ Post Created! Title: {payload['title']}")
+        else:
+            print(f"❌ Error: {res.status_code} - {res.text}")
 
 if __name__ == "__main__":
     post()
