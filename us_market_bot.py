@@ -145,41 +145,67 @@ class ReportBuilder:
     @staticmethod
     def build_html_content(stock_data, idx_returns, val_data):
         summary, pe, forecast, _ = val_data
-        html = f"<div style='background:#f8fafc; padding:30px; border-radius:20px; margin-bottom:30px;'><h2>📊 US Market Sentiment</h2><p>{summary}</p><b>PE Ratio: {pe} | Growth Forecast: {forecast}</b></div>"
+        html = f"""
+        <div style='background:#f8fafc; padding:30px; border-radius:20px; margin-bottom:30px; font-family: "Inter", sans-serif;'>
+            <h2 style="margin-top:0;">📊 US Market Sentiment</h2>
+            <div style="display:flex; gap:40px; margin:20px 0;">
+                <div><small style="opacity:0.6;">S&P 500 PE RATIO</small><br><b style="font-size:24px;">{pe}</b></div>
+                <div><small style="opacity:0.6;">EST. GROWTH</small><br><b style="font-size:24px; color:#22c55e;">{forecast}</b></div>
+            </div>
+            <p style="font-size:16px; color:#475569;">{summary}</p>
+        </div>
+        """
         
         perf_map = {INDEX_TICKERS[k]: v for k, v in idx_returns.items() if k in INDEX_TICKERS}
-        for sector, s_ret in sorted(perf_map.items(), key=lambda x: x[1], reverse=True):
+        sorted_sectors = sorted(perf_map.items(), key=lambda x: x[1], reverse=True)
+
+        for sector, s_ret in sorted_sectors:
             if sector not in SECTOR_MAP: continue
             
-            # SORT STOCKS BY VOL RATIO (Safety check added for missing tickers)
             sector_stocks = []
             for t in SECTOR_MAP[sector]:
                 if t in stock_data:
                     sector_stocks.append({'ticker': t, **stock_data[t]})
                 else:
-                    # Fallback for delisted/failed stocks like HES
                     sector_stocks.append({'ticker': t, 'price': 0, 'change': 0, 'vol_ratio': 0, 'curr_vol': 0, 'avg_vol': 1})
             
-            sorted_stocks = sorted(sector_stocks, key=lambda x: x.get('vol_ratio', 0), reverse=True)
+            # Use float() conversion in the sort key to be safe
+            sorted_stocks = sorted(sector_stocks, key=lambda x: float(x.get('vol_ratio', 0)), reverse=True)
 
-            html += f"<div style='background:white; border:1px solid #e2e8f0; border-radius:20px; padding:25px; margin-bottom:25px;'>"
-            html += f"<h3 style='margin:0;'>{sector} <span style='color:{'#16a34a' if s_ret > 0 else '#dc2626'}'>{s_ret:+.2f}%</span></h3>"
-            html += "<div style='display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:15px; margin-top:20px;'>"
+            # Build Sector Block
+            html += f"""
+            <div style='background:white; border:1px solid #e2e8f0; border-radius:20px; padding:25px; margin-bottom:25px; font-family: "Inter", sans-serif;'>
+                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px;">
+                    <h3 style='margin:0; font-size:22px;'>{sector}</h3>
+                    <b style="font-size:20px; color:{'#16a34a' if s_ret > 0 else '#dc2626'}">{s_ret:+.2f}%</b>
+                </div>
+                <div style="font-size: 12px; color: #64748b; margin-top: 10px; font-weight: 600;">
+                    💡 VolumeX is the multiplier of 20 Day average volume. Sorted by activity.
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; margin-top: 20px;">
+            """
             
             for s in sorted_stocks:
-                if s['price'] == 0: continue # Skip delisted stocks in the UI
-                vol_x = s['vol_ratio']
+                if s['price'] == 0: continue 
+                vol_x = float(s['vol_ratio'])
+                vol_style = "color: #ea580c; background: #fff7ed; border:1px solid #ffedd5;" if vol_x > 2.0 else "color: #64748b;"
+                
                 html += f"""
                 <div style='border:1px solid #f1f5f9; padding:15px; border-radius:12px;'>
-                    <small style='color:#64748b; font-size:10px;'>{NAME_MAP.get(s['ticker'])}</small><br>
-                    <b>{s['ticker']}</b><br>
-                    <span style='font-size:18px; font-weight:900;'>${s['price']:,.2f}</span><br>
-                    <span style='color:{'#16a34a' if s['change']>0 else '#dc2626'}'>{s['change']:+.2f}%</span><br>
-                    <div style='margin-top:10px; font-size:11px; {'color:#ea580c; font-weight:bold' if vol_x > 2.0 else 'color:#64748b'}'>
+                    <div style='color:#94a3b8; font-size:10px; text-transform:uppercase;'>{NAME_MAP.get(s['ticker'], s['ticker'])}</div>
+                    <b style='font-size:16px;'>{s['ticker']}</b><br>
+                    <div style='font-size:20px; font-weight:900; margin:5px 0;'>${s['price']:,.2f}</div>
+                    <div style='font-weight:700; color:{'#16a34a' if s['change']>0 else '#dc2626'}'>{s['change']:+.2f}%</div>
+                    <div style='margin-top:10px; padding:5px; border-radius:6px; font-size:11px; {vol_style}'>
                         {'🔥' if vol_x > 2.0 else '📈'} VolX: {vol_x:.2f}x
+                        <div style="font-size:9px; opacity:0.8; margin-top:2px;">
+                            Today: {ReportBuilder.format_vol(s['curr_vol'])}
+                        </div>
                     </div>
                 </div>"""
+            
             html += "</div></div>"
+            
         return html
 
 ###################################
@@ -199,34 +225,47 @@ class WordPressPublisher:
 ###################################
 
 def main():
-    print(f"🚀 Starting US Market Wrap for {datetime.now().strftime('%Y-%m-%d')}...")
+    print(f"🚀 Starting US Market Wrap execution...")
     data_engine = MarketDataEngine()
     hero_builder = HeroCardBuilder()
     report_builder = ReportBuilder()
     publisher = WordPressPublisher()
     
-    # 1. Fetch Benchmarks (S&P 500 and VIX)
+    # 1. Fetch Benchmarks
+    print("📥 Downloading Benchmarks (S&P 500, VIX)...")
     bench_raw = yf.download(['^GSPC', '^VIX'], period='5d')['Close']
-    i_close_today = bench_raw['^GSPC'].iloc[-1]
+    i_close_today = float(bench_raw['^GSPC'].iloc[-1])
     i_change = ((i_close_today / bench_raw['^GSPC'].iloc[-2]) - 1) * 100
-    vix_val = bench_raw['^VIX'].iloc[-1]
+    vix_val = float(bench_raw['^VIX'].iloc[-1])
     
     # 2. Fetch Sector Index Data
+    print("📥 Downloading Sector Indices...")
     idx_raw = yf.download(list(INDEX_TICKERS.keys()), period='5d')['Close']
     idx_returns = ((idx_raw.iloc[-1] / idx_raw.iloc[-2] - 1) * 100).fillna(0)
     
     # 3. Data Collection
+    print("📥 Downloading Individual Stock Stats...")
     stock_stats = data_engine.get_bulk_stock_stats()
     val_metrics = data_engine.get_valuation_metrics()
     
-    # 4. Assembly (Pass 3 arguments to hero_builder)
+    # 4. Assembly
+    print("🛠 Building HTML Content...")
     nifty_df_mock = bench_raw[['^GSPC']].rename(columns={'^GSPC': 'Close'})
     hero_html = hero_builder.build_hero_card(nifty_df_mock, i_change, vix_val)
     body_html = report_builder.build_html_content(stock_stats, idx_returns, val_metrics)
     
+    # Verify content length
+    print(f"DEBUG: Body HTML length is {len(body_html)} characters.")
+    
     post_title = f"Wall Street Wrap {datetime.now().strftime('%d %b %Y')}: S&P 500 {i_change:+.2f}%"
-    if publisher.push_post(post_title, hero_html + body_html):
-        print(f"✅ Post Successful: {post_title}")
+    
+    # Combine and push
+    full_content = hero_html + body_html
+    
+    if len(body_html) < 500:
+        print("⚠️ Warning: Body HTML seems too short. Check SECTOR_MAP and stock_data keys.")
 
-if __name__ == "__main__":
-    main()
+    if publisher.push_post(post_title, full_content):
+        print(f"✅ Post Successful: {post_title}")
+    else:
+        print("❌ Post Failed. Check WordPress credentials or URL.")
