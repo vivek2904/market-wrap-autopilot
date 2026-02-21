@@ -1,185 +1,17 @@
-import streamlit as st
+import os, requests, base64, pandas as pd
 import yfinance as yf
-import pandas as pd
+import pandas_ta as ta
+from datetime import datetime
+from bs4 import BeautifulSoup
+import io
 
-st.set_page_config(layout="wide")
+# --- SECURE CONFIG ---
+WP_USER = os.environ.get('WP_USER')
+WP_PASS = os.environ.get('WP_PASS')
+WP_URL = os.environ.get('WP_URL')
+CATEGORY_ID = 12 
 
-# ==============================
-# 🎨 PREMIUM PROFESSIONAL STYLING
-# ==============================
-st.markdown("""
-<style>
-
-body {
-    background-color: #f4f6f9;
-}
-
-/* ====== NIFTY TOP CARD ====== */
-.nifty-card {
-    background: linear-gradient(135deg, #0f172a, #1e293b);
-    padding: 50px;
-    border-radius: 22px;
-    text-align: center;
-    color: white;
-    box-shadow: 0px 20px 45px rgba(0,0,0,0.25);
-    margin-bottom: 40px;
-}
-
-.nifty-title {
-    font-size: 15px;
-    letter-spacing: 4px;
-    color: #94a3b8;
-}
-
-.nifty-value {
-    font-size: 72px;
-    font-weight: 800;
-    margin: 12px 0;
-}
-
-.nifty-change-positive {
-    font-size: 22px;
-    font-weight: 600;
-    color: #22c55e;
-}
-
-.nifty-change-negative {
-    font-size: 22px;
-    font-weight: 600;
-    color: #ef4444;
-}
-
-/* ====== VALUATION CARD ====== */
-.valuation-card {
-    background: white;
-    padding: 35px;
-    border-radius: 20px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.08);
-    margin-bottom: 40px;
-}
-
-.valuation-title {
-    font-size: 28px;
-    font-weight: 700;
-    margin-bottom: 20px;
-    color: #111827;
-}
-
-.metric-label {
-    font-size: 15px;
-    color: #6b7280;
-}
-
-.metric-value {
-    font-size: 28px;
-    font-weight: 700;
-    color: #111827;
-}
-
-/* ====== SECTOR CARD ====== */
-.sector-card {
-    background: white;
-    padding: 30px;
-    border-radius: 20px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.08);
-    margin-bottom: 40px;
-}
-
-.sector-header {
-    font-size: 24px;
-    font-weight: 700;
-    margin-bottom: 20px;
-}
-
-/* ====== STOCK CARD ====== */
-.stock-card {
-    background: #ffffff;
-    padding: 18px;
-    border-radius: 14px;
-    border: 1px solid #e5e7eb;
-    margin-bottom: 15px;
-    transition: 0.3s;
-}
-
-.stock-card:hover {
-    box-shadow: 0px 6px 18px rgba(0,0,0,0.1);
-}
-
-.stock-name {
-    font-weight: 800;
-    font-size: 18px;
-    color: #000000;
-}
-
-.stock-price {
-    font-size: 16px;
-    font-weight: 600;
-}
-
-.stock-positive {
-    color: #16a34a;
-    font-weight: 600;
-}
-
-.stock-negative {
-    color: #dc2626;
-    font-weight: 600;
-}
-
-</style>
-""", unsafe_allow_html=True)
-
-# ==============================
-# 📈 NIFTY DATA
-# ==============================
-nifty = yf.Ticker("^NSEI")
-data = nifty.history(period="1d")
-
-if not data.empty:
-    price = data["Close"].iloc[-1]
-    prev = data["Open"].iloc[-1]
-    change = price - prev
-    percent = (change / prev) * 100
-
-    change_class = "nifty-change-positive" if percent >= 0 else "nifty-change-negative"
-
-    st.markdown(f"""
-    <div class="nifty-card">
-        <div class="nifty-title">DAILY NIFTY 50 INSIGHTS</div>
-        <div class="nifty-value">{price:,.2f}</div>
-        <div class="{change_class}">
-            {'▲' if percent>=0 else '▼'} {percent:.2f}%
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-# ==============================
-# 📊 VALUATION SECTION
-# ==============================
-
-current_pe = 23.86
-forecast_1y = 7.33
-
-st.markdown(f"""
-<div class="valuation-card">
-    <div class="valuation-title">📊 Valuation Analysis & Forecast</div>
-    <div style="display:flex; gap:100px;">
-        <div>
-            <div class="metric-label">Current P/E</div>
-            <div class="metric-value">{current_pe}</div>
-        </div>
-        <div>
-            <div class="metric-label">1Y Median Forecast</div>
-            <div class="metric-value" style="color:#16a34a;">{forecast_1y}%</div>
-        </div>
-    </div>
-</div>
-""", unsafe_allow_html=True)
-
-# ==============================
-# 📊 FULL SECTOR MAP (UNCHANGED)
-# ==============================
-
+# --- 1. COMPREHENSIVE SECTOR MAPPING (170+ STOCKS) ---
 SECTOR_MAP = {
     'Nifty Bank': ['HDFCBANK', 'ICICIBANK', 'SBIN', 'AXISBANK', 'KOTAKBANK', 'INDUSINDBK', 'BANKBARODA', 'PNB', 'IDFCFIRSTB', 'FEDERALBNK'],
     'IT Services': ['TCS', 'INFY', 'HCLTECH', 'WIPRO', 'TECHM', 'LTIM', 'PERSISTENT', 'COFORGE', 'MPHASIS', 'KPITTECH'],
@@ -200,43 +32,154 @@ SECTOR_MAP = {
     'Services': ['LT', 'ADANIPORTS', 'APOLLOHOSP', 'HDFCLIFE', 'SBILIFE', 'TRENT', 'INDIGO', 'VBL', 'TATACOMM', 'GMRINFRA']
 }
 
-# ==============================
-# 📊 SECTOR DISPLAY
-# ==============================
+# Tickers updated for better stability
+INDEX_TICKERS = {'^NSEI': 'NIFTY 50', '^NSEBANK': 'Nifty Bank', '^CNXIT': 'IT Services', '^CNXAUTO': 'Automobile', '^CNXFMCG': 'FMCG', '^CNXMETAL': 'Metals', '^CNXPHARMA': 'Pharma', '^CNXENERGY': 'Energy', '^CNXREALTY': 'Realty', '^CNXINFRA': 'Infrastructure', '^CNXFIN': 'Financial Services', '^CNXPSUBANK': 'PSU Bank', '^CNXMEDIA': 'Media', '^CNXCONSUMP': 'Consumption', '^CNXPSE': 'PSE', '^CNXCPSE': 'CPSE', '^CNXCOMMOD': 'Commodities', '^CNXSERVICE': 'Services'}
 
-for sector, stocks in SECTOR_MAP.items():
-    st.markdown(f'<div class="sector-card">', unsafe_allow_html=True)
-    st.markdown(f'<div class="sector-header">{sector}</div>', unsafe_allow_html=True)
+def get_links(ticker):
+    clean = ticker.replace(".NS", "").upper()
+    return f"https://www.google.com/finance/quote/{clean}:NSE", f"{WP_URL.split('wp-json')[0]}?s={clean}"
 
-    cols = st.columns(3)
+def get_valuation_and_summary():
+    url = "https://worldperatio.com/area/india/"
+    headers = {'User-Agent': 'Mozilla/5.0'}
+    try:
+        response = requests.get(url, headers=headers, timeout=15)
+        soup = BeautifulSoup(response.text, 'html.parser')
+        paragraphs = soup.find_all('p', limit=3)
+        summary_text = " ".join([p.get_text() for p in paragraphs if len(p.get_text()) > 50])
 
-    for i, stock in enumerate(stocks):
+        tables = pd.read_html(io.StringIO(response.text))
+        current_pe, return_val, metrics_table_html = "N/A", "N/A", ""
+
+        for df in tables:
+            pe_col = [c for c in df.columns if "vs" in str(c)]
+            if pe_col and current_pe == "N/A":
+                # Cleaning the PE from quotes and extra characters
+                raw_pe = str(pe_col[0]).split("vs")[-1].strip()
+                current_pe = raw_pe.replace("'", "").replace(")", "").replace("(", "").strip()
+            
+            if 'Period' in df.columns and any('Average P/E' in col for col in df.columns):
+                metrics_table_html = df[['Period', 'Average P/E (μ)', 'Std Dev (σ)', 'vs Current P/E']].head(5).to_html(index=False, border=0, classes='valuation-table')
+            
+            if not df.empty and '1 Years' in str(df.iloc[:, 0].values):
+                return_val = f"{df.iloc[0, 6]}%"
+
+        return summary_text, current_pe, return_val, metrics_table_html
+    except:
+        return "Market valuation metrics provide context for current market levels.", "Analyzing...", "N/A", ""
+
+def fetch_analysis_data():
+    all_tickers = list(set([f"{t}.NS" for sublist in SECTOR_MAP.values() for t in sublist]))
+    data = yf.download(all_tickers, period="60d", interval="1d", auto_adjust=True)
+    results = {}
+    for t in all_tickers:
         try:
-            ticker = yf.Ticker(stock + ".NS")
-            hist = ticker.history(period="1d")
+            prices = data['Close'][t].dropna()
+            if len(prices) < 20: continue
+            curr, prev = prices.iloc[-1], prices.iloc[-2]
+            results[t.replace(".NS", "")] = {
+                'price': curr, 'change': ((curr/prev)-1)*100, 
+                'rsi': ta.rsi(prices, length=14).iloc[-1], 
+                'trend': "UP" if curr > prices.rolling(window=20).mean().iloc[-1] else "DOWN"
+            }
+        except: continue
+    return results
 
-            if hist.empty:
-                continue
+def build_report():
+    # Fetch Index Data
+    idx_data = yf.download(list(INDEX_TICKERS.keys()), period='5d')['Close'].dropna(axis=1)
+    # Calculate returns and drop any NaN values to fix the screenshot error
+    idx_returns = ((idx_data.iloc[-1] / idx_data.iloc[-2] - 1) * 100).dropna()
+    
+    nifty_price = idx_data.iloc[-1].get('^NSEI', 0)
+    nifty_change = idx_returns.get('^NSEI', 0)
+    
+    stock_analysis = fetch_analysis_data()
+    summary, pe, target_return, v_table = get_valuation_and_summary()
 
-            price = hist["Close"].iloc[-1]
-            prev = hist["Open"].iloc[-1]
-            change = price - prev
-            percent = (change / prev) * 100
+    # GROWTH MARKET LABEL LOGIC
+    try: pe_float = float(pe)
+    except: pe_float = 23.0
+    val_status = "🚀 High Growth Premium" if pe_float > 25 else "⚖️ Growth Value" if pe_float > 21 else "💎 Massive Opportunity"
 
-            change_class = "stock-positive" if percent >= 0 else "stock-negative"
+    html = f"""
+    <style>
+        .market-card {{ font-family: 'Inter', -apple-system, sans-serif; max-width: 950px; margin: auto; color: #1e293b; line-height: 1.6; }}
+        .header-box {{ background: #0f172a; color: white; padding: 50px 25px; border-radius: 24px; text-align: center; margin-bottom: 30px; }}
+        .insight-box {{ background: #f8fafc; border: 1px solid #e2e8f0; padding: 30px; border-radius: 20px; margin-bottom: 30px; }}
+        .valuation-table {{ width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }}
+        .valuation-table th {{ background: #f1f5f9; text-align: left; padding: 12px; border-bottom: 2px solid #e2e8f0; }}
+        .sector-block {{ background: white; border: 1px solid #e2e8f0; border-radius: 20px; padding: 25px; margin-bottom: 25px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }}
+        .stock-grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; margin-top: 20px; }}
+        .stock-card {{ border: 1px solid #f1f5f9; padding: 12px; border-radius: 10px; font-size: 13px; background: #fff; }}
+        .tag {{ font-size: 10px; padding: 2px 5px; border-radius: 4px; font-weight: bold; text-transform: uppercase; margin-right: 4px; }}
+        a {{ text-decoration: none; color: #3b82f6; font-weight: 600; }}
+    </style>
 
-            with cols[i % 3]:
-                st.markdown(f"""
+    <div class="market-card">
+        <div class="header-box">
+            <span style="opacity: 0.7; letter-spacing: 2px; font-weight: 600;">DAILY NIFTY 50 INSIGHTS</span>
+            <span style="font-size: 64px; font-weight: 800; display: block;">{nifty_price:,.2f}</span>
+            <div style="font-size: 24px; color: {'#4ade80' if nifty_change > 0 else '#f87171'}; font-weight: 700;">
+                {'▲' if nifty_change > 0 else '▼'} {nifty_change:.2f}% ({val_status})
+            </div>
+        </div>
+
+        <div class="insight-box">
+            <h2 style="margin-top:0; color:#0f172a;">📊 Valuation Analysis & Forecast</h2>
+            <p style="font-size:17px;">{summary}</p>
+            <div style="display:flex; gap:40px; margin: 25px 0; background: white; padding: 20px; border-radius: 15px;">
+                <div><small style="color:#64748b; font-weight:700;">CURRENT P/E</small><br><b style="font-size:28px;">{pe}</b></div>
+                <div><small style="color:#64748b; font-weight:700;">1Y MEDIAN FORECAST</small><br><b style="font-size:28px; color:#22c55e;">{target_return}</b></div>
+            </div>
+            {v_table}
+        </div>
+
+        <h2 style="border-left: 8px solid #3b82f6; padding-left: 15px; margin: 50px 0 25px; font-size: 28px;">🏗️ Sectoral Performance (Top Gainers First)</h2>
+    """
+
+    # SORTING SECTORS: Descending order of performance
+    # Filter only tickers that exist in idx_returns and map to SECTOR_MAP names
+    performance_map = {INDEX_TICKERS[k]: v for k, v in idx_returns.items() if k in INDEX_TICKERS}
+    sorted_sectors = sorted(performance_map.items(), key=lambda item: item[1], reverse=True)
+
+    for sector_name, s_return in sorted_sectors:
+        if sector_name not in SECTOR_MAP: continue
+        tickers = SECTOR_MAP[sector_name]
+        
+        html += f"""
+        <div class="sector-block">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px;">
+                <h3 style="margin:0; font-size:22px;">{sector_name}</h3>
+                <b style="font-size:20px; color: {'#16a34a' if s_return > 0 else '#dc2626'};">
+                    {'+' if s_return > 0 else ''}{s_return:.2f}%
+                </b>
+            </div>
+            <div class="stock-grid">"""
+        for t in tickers:
+            s = stock_analysis.get(t, {'price': 0, 'change': 0, 'rsi': 50, 'trend': 'SIDE'})
+            ext, int_link = get_links(t)
+            rsi_tag = '<span class="tag" style="background:#fee2e2; color:#ef4444;">Overbought</span>' if s['rsi'] > 70 else \
+                      ('<span class="tag" style="background:#dcfce7; color:#22c55e;">Oversold</span>' if s['rsi'] < 30 else '')
+            html += f"""
                 <div class="stock-card">
-                    <div class="stock-name">{stock}</div>
-                    <div class="stock-price">₹{price:,.2f}</div>
-                    <div class="{change_class}">
-                        {'▲' if percent>=0 else '▼'} {percent:.2f}%
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
+                    <div style="font-weight:700;"><a href="{int_link}">{t}</a></div>
+                    <div style="font-size:16px; font-weight:800; margin-bottom:4px;"><a href="{ext}" target="_blank" style="color:#1e293b;">₹{s['price']:,.2f}</a></div>
+                    <div style="font-weight:700; color:{'#16a34a' if s['change'] > 0 else '#dc2626'};">{'+' if s['change'] > 0 else ''}{s['change']:.2f}%</div>
+                    <div style="margin-top:10px;">{rsi_tag}</div>
+                </div>"""
+        html += "</div></div>"
+    html += "</div>"
+    return html, nifty_change
 
-        except:
-            pass
+def post():
+    content, change = build_report()
+    if content:
+        auth = base64.b64encode(f"{WP_USER}:{WP_PASS}".encode()).decode()
+        headers = {'Authorization': f'Basic {auth}', 'Content-Type': 'application/json'}
+        payload = {'title': f"Market Wrap {datetime.now().strftime('%d %b')}: Nifty {change:.2f}% | Top Performing Sectors", 'content': content, 'status': 'publish', 'categories': [CATEGORY_ID]}
+        res = requests.post(WP_URL, headers=headers, json=payload)
+        print(f"✅ Success: {payload['title']}" if res.status_code == 201 else f"❌ Error: {res.text}")
 
-    st.markdown("</div>", unsafe_allow_html=True)
+if __name__ == "__main__":
+    post()
