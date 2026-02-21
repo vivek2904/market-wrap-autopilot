@@ -23,7 +23,7 @@ jobs:
       - name: Install Dependencies
         run: |
           pip install --upgrade pip
-          pip install requests yfinance pandas lxml beautifulsoup4
+          pip install requests yfinance pandas lxml beautifulsoup4 pandas_ta
 
       - name: Execute US Market Bot
         env:
