@@ -177,8 +177,7 @@ class HeroCardBuilder:
 
 
 #############################################
-
-MODULE 3.2: THE HEAT-MAPPED WATCHLIST
+###MODULE 3.2: THE HEAT-MAPPED WATCHLIST
 #############################################
    class ReportBuilder:
     @staticmethod
