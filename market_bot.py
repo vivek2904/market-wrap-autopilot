@@ -263,7 +263,7 @@ class ReportBuilder:
                     <b style="font-size:20px; color:{'#16a34a' if s_ret > 0 else '#dc2626'}">{s_ret:+.2f}%</b>
                 </div>
                 <div style="font-size: 13px; color: #64748b; margin-top: 8px; font-style: italic; font-weight: 600;">
-                    💡 VolumeX is the multiplier of 20 Day average volume. Sorted by highest institutional activity first.
+                    💡 VolumeX is the multiplier of 20 Day average volume.
                 </div>
                 <div class="stock-grid">"""
             
