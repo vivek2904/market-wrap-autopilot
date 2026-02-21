@@ -110,35 +110,69 @@ class MarketDataEngine:
 class HeroCardBuilder:
     @staticmethod
     def get_market_sentiment(change):
-        if change > 1.0: return "Bulls on Rampage! 🚀 Nifty Shatters Resistance"
-        elif change > 0: return "Green Shoot Recovery 📈 Bulls Defend Key Levels"
-        elif change < -1.0: return "Blood on D-Street! 🩸 Bears Aggressive as Support Fails"
+        """Generates punchy, irresistible SEO-optimized headlines."""
+        # Ensure change is a float for comparison
+        val = float(change)
+        if val > 1.0: return "Bulls on Rampage! 🚀 Nifty Shatters Resistance"
+        elif val > 0: return "Green Shoot Recovery 📈 Bulls Defend Key Levels"
+        elif val < -1.0: return "Blood on D-Street! 🩸 Bears Aggressive as Support Fails"
         else: return "Tug-of-War! ⚖️ Market Braces for Major Breakout"
 
     @staticmethod
     def build_hero_card(nifty_data, change):
-        curr = nifty_data.iloc[-1]
-        prev_close = nifty_data.iloc[-2]['Close']
-        sentiment_headline = HeroCardBuilder.get_market_sentiment(change)
-        brand_color = "#22c55e" if change > 0 else "#ef4444"
+        """
+        Creates the high-info Hero Card showing OHLC and Yesterday's Close.
+        """
+        # CRITICAL FIX: Ensure values are scalars (floats), not Series
+        curr_close = float(nifty_data['Close'].iloc[-1])
+        curr_open = float(nifty_data['Open'].iloc[-1])
+        curr_high = float(nifty_data['High'].iloc[-1])
+        curr_low = float(nifty_data['Low'].iloc[-1])
+        prev_close = float(nifty_data['Close'].iloc[-2])
+        
+        f_change = float(change)
+        pts_diff = curr_close - prev_close
+        sentiment_headline = HeroCardBuilder.get_market_sentiment(f_change)
+        
+        # UI color logic
+        brand_color = "#22c55e" if f_change > 0 else "#ef4444"
         bg_gradient = "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)"
         
         return f"""
         <div style="background: {bg_gradient}; color: white; padding: 40px 30px; border-radius: 24px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3); margin-bottom: 40px; font-family: 'Inter', sans-serif;">
-            <div style="text-transform: uppercase; letter-spacing: 2px; font-size: 14px; font-weight: 700; color: {brand_color}; margin-bottom: 10px;">{sentiment_headline}</div>
+            <div style="text-transform: uppercase; letter-spacing: 2px; font-size: 14px; font-weight: 700; color: {brand_color}; margin-bottom: 10px;">
+                {sentiment_headline}
+            </div>
+            
             <div style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 20px;">
                 <div>
                     <span style="font-size: 18px; opacity: 0.7; display: block;">NIFTY 50 INDEX</span>
-                    <span style="font-size: 64px; font-weight: 900; line-height: 1;">{curr['Close']:,.2f}</span>
+                    <span style="font-size: 64px; font-weight: 900; line-height: 1;">{curr_close:,.2f}</span>
                     <div style="margin-top: 10px; font-size: 24px; font-weight: 700; color: {brand_color};">
-                        {'▲' if change > 0 else '▼'} {change:+.2f}% ({curr['Close'] - prev_close:+.2f} pts)
+                        {'▲' if f_change > 0 else '▼'} {abs(f_change):.2f}% 
+                        <span style="font-size: 16px; opacity: 0.8; font-weight: 400; color: white; margin-left: 10px;">
+                            ({pts_diff:+.2f} pts)
+                        </span>
                     </div>
                 </div>
+                
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; background: rgba(255,255,255,0.05); padding: 20px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1);">
-                    <div><small style="opacity:0.6; display:block; font-size:11px; text-transform:uppercase;">Prev Close</small><b>{prev_close:,.2f}</b></div>
-                    <div><small style="opacity:0.6; display:block; font-size:11px; text-transform:uppercase;">Open</small><b>{curr['Open']:,.2f}</b></div>
-                    <div><small style="opacity:0.6; display:block; font-size:11px; text-transform:uppercase;">Day High</small><b style="color: #4ade80;">{curr['High']:,.2f}</b></div>
-                    <div><small style="opacity:0.6; display:block; font-size:11px; text-transform:uppercase;">Day Low</small><b style="color: #f87171;">{curr['Low']:,.2f}</b></div>
+                    <div style="border-right: 1px solid rgba(255,255,255,0.1); padding-right: 15px;">
+                        <small style="opacity:0.6; display:block; font-size:11px; text-transform:uppercase;">Prev Close</small>
+                        <b style="font-size:16px;">{prev_close:,.2f}</b>
+                    </div>
+                    <div>
+                        <small style="opacity:0.6; display:block; font-size:11px; text-transform:uppercase;">Open</small>
+                        <b style="font-size:16px;">{curr_open:,.2f}</b>
+                    </div>
+                    <div style="border-right: 1px solid rgba(255,255,255,0.1); padding-right: 15px;">
+                        <small style="opacity:0.6; display:block; font-size:11px; text-transform:uppercase;">Day High</small>
+                        <b style="font-size:16px; color: #4ade80;">{curr_high:,.2f}</b>
+                    </div>
+                    <div>
+                        <small style="opacity:0.6; display:block; font-size:11px; text-transform:uppercase;">Day Low</small>
+                        <b style="font-size:16px; color: #f87171;">{curr_low:,.2f}</b>
+                    </div>
                 </div>
             </div>
         </div>
@@ -231,31 +265,30 @@ def main():
     report_builder = ReportBuilder()
     publisher = WordPressPublisher()
     
-    # 2. Fetch Nifty 50 Data & FORCE SCALAR (Fixes the ValueError)
+    # 2. Fetch Nifty 50 Data & FORCE FLOAT
     nifty_raw = yf.download('^NSEI', period='5d', interval='1d', auto_adjust=True)
     if nifty_raw.empty:
         print("❌ Error: Could not fetch Nifty data.")
         return
 
-    # Using .iloc[-1] and .item() ensures we get one number, not a Series
+    # Using float() here is a double-insurance against the Format Error
     n_close_today = float(nifty_raw['Close'].iloc[-1])
     n_close_prev = float(nifty_raw['Close'].iloc[-2])
     n_change_pct = float(((n_close_today / n_close_prev) - 1) * 100)
     
-    # 3. Fetch Index Data (Handle potential ticker failures)
+    # 3. Fetch Index Data (Clean empty columns)
     print("📥 Fetching sectoral indices...")
     idx_raw = yf.download(list(INDEX_TICKERS.keys()), period='5d')['Close']
-    
-    # Clean indices that failed to download
     idx_raw = idx_raw.dropna(axis=1, how='all') 
+    
+    # Ensure index returns are scalar-friendly
     idx_returns = ((idx_raw.iloc[-1] / idx_raw.iloc[-2] - 1) * 100).fillna(0)
     
     # 4. Fetch Watchlist Technicals
     stock_stats = data_engine.get_bulk_stock_stats()
     val_metrics = data_engine.get_valuation_metrics()
     
-    # 5. Assemble UI
-    # Now n_change_pct is a single number, so HeroCard won't crash!
+    # 5. Build Components
     hero_html = hero_builder.build_hero_card(nifty_raw, n_change_pct)
     body_html = report_builder.build_html_content(
         stock_stats, 
@@ -270,7 +303,7 @@ def main():
     post_title = f"India Market Wrap {post_date}: Nifty {n_change_pct:+.2f}%"
     
     if publisher.push_post(post_title, hero_html + body_html, seo_tags):
-        print(f"✅ Post Successful: {post_title}")
+        print(f"✅ Success: {post_title}")
     else:
         print("❌ Posting Failed.")
 
