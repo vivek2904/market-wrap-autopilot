@@ -91,32 +91,41 @@ class HeroCardBuilder:
     @staticmethod
     def get_market_sentiment(change):
         val = float(change)
-        if val > 1.0: return "Wall Street Rally! 🚀 S&P 500 Surges"
-        elif val > 0.2: return "Markets Edge Higher 📈 Momentum Sustained"
-        elif val < -1.0: return "Sell-Off Alert! 🩸 Bears Aggressive on D-Street"
-        else: return "Choppy Trading ⚖️ Markets Await Catalyst"
+        if val > 1.2: return "Wall Street on Fire! 🚀 S&P 500 Surges"
+        elif val > 0.3: return "Green Shoots Emerging 📈 Bulls Control the Tape"
+        elif val < -1.2: return "Market Bloodbath! 🩸 Bears Aggressive as Support Fails"
+        else: return "Tug-of-War ⚖️ Markets Await Inflation Data"
 
     @staticmethod
-    def build_hero_card(index_data, change):
+    def build_hero_card(index_data, change, vix):
+        """Accepted 3 arguments: data, change, and vix value."""
         today = index_data.iloc[-1]
         yesterday = index_data.iloc[-2]
-        curr_close, prev_close = float(today['Close']), float(yesterday['Close'])
+        
+        curr_close = float(today['Close'])
         brand_color = "#22c55e" if change > 0 else "#ef4444"
+        vix_color = "#ef4444" if vix > 20 else "#22c55e"
         
         return f"""
-        <div style="background: linear-gradient(135deg, #020617 0%, #1e293b 100%); color: white; padding: 40px 30px; border-radius: 24px; margin-bottom: 40px; font-family: 'Inter', sans-serif;">
-            <div style="text-transform: uppercase; letter-spacing: 2px; font-size: 13px; font-weight: 800; color: {brand_color}; margin-bottom: 12px;">{HeroCardBuilder.get_market_sentiment(change)}</div>
+        <div style="background: linear-gradient(135deg, #020617 0%, #0f172a 100%); color: white; padding: 40px 30px; border-radius: 24px; margin-bottom: 40px; font-family: 'Inter', sans-serif;">
+            <div style="text-transform: uppercase; letter-spacing: 2px; font-size: 13px; font-weight: 800; color: {brand_color}; margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">
+                {HeroCardBuilder.get_market_sentiment(change)}
+            </div>
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 30px;">
                 <div>
-                    <span style="font-size: 16px; opacity: 0.6; font-weight: 600; display: block;">S&P 500 INDEX</span>
+                    <span style="opacity: 0.6; font-weight: 600; display: block;">S&P 500 INDEX</span>
                     <span style="font-size: 68px; font-weight: 900; line-height: 0.9;">{curr_close:,.2f}</span>
                     <div style="margin-top: 15px; font-size: 26px; font-weight: 700; color: {brand_color};">
-                        {'▲' if change > 0 else '▼'} {abs(change):.2f}% ({curr_close - prev_close:+.2f} pts)
+                        {'▲' if change > 0 else '▼'} {abs(change):.2f}% 
+                        <span style="font-size: 16px; opacity: 0.8; font-weight: 500; color: white; margin-left: 12px; background: rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 8px;">
+                            {curr_close - float(yesterday['Close']):+.2f} pts
+                        </span>
                     </div>
                 </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; background: rgba(255,255,255,0.03); padding: 25px; border-radius: 20px;">
-                    <div><small style="opacity:0.5; font-size:10px;">DAY HIGH</small><br><b style="font-size:17px; color:#22c55e;">{today['High']:,.2f}</b></div>
-                    <div><small style="opacity:0.5; font-size:10px;">DAY LOW</small><br><b style="font-size:17px; color:#ef4444;">{today['Low']:,.2f}</b></div>
+                <div style="text-align: right; background: rgba(255,255,255,0.03); padding: 25px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1);">
+                    <small style="opacity:0.5; text-transform:uppercase;">Fear Index (VIX)</small><br>
+                    <b style="font-size: 32px; color: {vix_color};">{vix:.2f}</b><br>
+                    <small style="opacity:0.8;">{'High Volatility' if vix > 20 else 'Low Risk'}</small>
                 </div>
             </div>
         </div>
@@ -136,14 +145,21 @@ class ReportBuilder:
     @staticmethod
     def build_html_content(stock_data, idx_returns, val_data):
         summary, pe, forecast, _ = val_data
-        html = f"<div style='background:#f8fafc; padding:30px; border-radius:20px; margin-bottom:30px;'><h2>📊 US Valuation Snapshot</h2><p>{summary}</p><b>PE: {pe} | Growth: {forecast}</b></div>"
+        html = f"<div style='background:#f8fafc; padding:30px; border-radius:20px; margin-bottom:30px;'><h2>📊 US Market Sentiment</h2><p>{summary}</p><b>PE Ratio: {pe} | Growth Forecast: {forecast}</b></div>"
         
         perf_map = {INDEX_TICKERS[k]: v for k, v in idx_returns.items() if k in INDEX_TICKERS}
         for sector, s_ret in sorted(perf_map.items(), key=lambda x: x[1], reverse=True):
             if sector not in SECTOR_MAP: continue
             
-            # SORT STOCKS BY VOL RATIO
-            sector_stocks = [dict(stock_data.get(t, {}), ticker=t) for t in SECTOR_MAP[sector] if t in stock_data]
+            # SORT STOCKS BY VOL RATIO (Safety check added for missing tickers)
+            sector_stocks = []
+            for t in SECTOR_MAP[sector]:
+                if t in stock_data:
+                    sector_stocks.append({'ticker': t, **stock_data[t]})
+                else:
+                    # Fallback for delisted/failed stocks like HES
+                    sector_stocks.append({'ticker': t, 'price': 0, 'change': 0, 'vol_ratio': 0, 'curr_vol': 0, 'avg_vol': 1})
+            
             sorted_stocks = sorted(sector_stocks, key=lambda x: x.get('vol_ratio', 0), reverse=True)
 
             html += f"<div style='background:white; border:1px solid #e2e8f0; border-radius:20px; padding:25px; margin-bottom:25px;'>"
@@ -151,10 +167,11 @@ class ReportBuilder:
             html += "<div style='display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:15px; margin-top:20px;'>"
             
             for s in sorted_stocks:
+                if s['price'] == 0: continue # Skip delisted stocks in the UI
                 vol_x = s['vol_ratio']
                 html += f"""
                 <div style='border:1px solid #f1f5f9; padding:15px; border-radius:12px;'>
-                    <small style='color:#64748b; text-transform:uppercase; font-size:10px;'>{NAME_MAP.get(s['ticker'])}</small><br>
+                    <small style='color:#64748b; font-size:10px;'>{NAME_MAP.get(s['ticker'])}</small><br>
                     <b>{s['ticker']}</b><br>
                     <span style='font-size:18px; font-weight:900;'>${s['price']:,.2f}</span><br>
                     <span style='color:{'#16a34a' if s['change']>0 else '#dc2626'}'>{s['change']:+.2f}%</span><br>
@@ -188,24 +205,26 @@ def main():
     report_builder = ReportBuilder()
     publisher = WordPressPublisher()
     
-    # 1. Fetch Benchmarks
+    # 1. Fetch Benchmarks (S&P 500 and VIX)
     bench_raw = yf.download(['^GSPC', '^VIX'], period='5d')['Close']
-    i_change = ((bench_raw['^GSPC'].iloc[-1] / bench_raw['^GSPC'].iloc[-2]) - 1) * 100
+    i_close_today = bench_raw['^GSPC'].iloc[-1]
+    i_change = ((i_close_today / bench_raw['^GSPC'].iloc[-2]) - 1) * 100
     vix_val = bench_raw['^VIX'].iloc[-1]
     
-    # 2. Sector Performance
+    # 2. Fetch Sector Index Data
     idx_raw = yf.download(list(INDEX_TICKERS.keys()), period='5d')['Close']
     idx_returns = ((idx_raw.iloc[-1] / idx_raw.iloc[-2] - 1) * 100).fillna(0)
     
-    # 3. Bulk Stats
+    # 3. Data Collection
     stock_stats = data_engine.get_bulk_stock_stats()
     val_metrics = data_engine.get_valuation_metrics()
     
-    # 4. Assembly
-    hero_html = hero_builder.build_hero_card(bench_raw[['^GSPC']].rename(columns={'^GSPC': 'Close'}), i_change, vix_val)
+    # 4. Assembly (Pass 3 arguments to hero_builder)
+    nifty_df_mock = bench_raw[['^GSPC']].rename(columns={'^GSPC': 'Close'})
+    hero_html = hero_builder.build_hero_card(nifty_df_mock, i_change, vix_val)
     body_html = report_builder.build_html_content(stock_stats, idx_returns, val_metrics)
     
-    post_title = f"US Market Wrap {datetime.now().strftime('%d %b %Y')}: S&P 500 {i_change:+.2f}%"
+    post_title = f"Wall Street Wrap {datetime.now().strftime('%d %b %Y')}: S&P 500 {i_change:+.2f}%"
     if publisher.push_post(post_title, hero_html + body_html):
         print(f"✅ Post Successful: {post_title}")
 
