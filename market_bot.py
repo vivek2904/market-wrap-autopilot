@@ -236,8 +236,8 @@ class ReportBuilder:
         <div style="background:#f8fafc; padding:30px; border-radius:20px; border:1px solid #e2e8f0; margin-bottom:30px;">
             <h2 style="margin-top:0;">📊 Valuation Analytics</h2>
             <div style="display:flex; gap:40px; margin:25px 0; background:white; padding:20px; border-radius:15px;">
-                <div><small>CURRENT PE</small><br><b style="font-size:28px;">{pe}</b></div>
-                <div><small>1Y FORECAST</small><br><b style="font-size:28px; color:#22c55e;">{forecast}</b></div>
+                <div><small>CURRENT PE</small><br><b style="font-size:20px;">{pe}</b></div>
+                <div><small>1Y FORECAST</small><br><b style="font-size:20px; color:#22c55e;">{forecast}</b></div>
             </div>
             <p style="font-size:17px;">{summary}</p>
             {v_table}
