@@ -18,7 +18,7 @@ jobs:
           python-version: '3.10'
           
       - name: Install Libs
-        run: pip install requests pandas lxml yfinance beautifulsoup4
+        run: pip install requests pandas lxml yfinance beautifulsoup4 pandas_ta
         
       - name: Run Bot
         env:
