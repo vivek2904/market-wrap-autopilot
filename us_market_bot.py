@@ -5,16 +5,14 @@
 import os, requests, base64, pandas as pd, yfinance as yf, pandas_ta as ta
 from datetime import datetime
 from bs4 import BeautifulSoup
-import io
-import re
+import io, re
 
-# --- SECURE CREDENTIALS ---
+# --- CREDENTIALS ---
 WP_USER = os.environ.get('WP_USER')
 WP_PASS = os.environ.get('WP_PASS')
 WP_URL = os.environ.get('WP_URL')
-CATEGORY_ID = 15  # US Market Category
+CATEGORY_ID = 15  # US Market
 
-# --- US WATCHLIST (Parsed for Tickers) ---
 RAW_WATCHLIST = {
     'Technology': ['Apple (AAPL)', 'Microsoft (MSFT)', 'Nvidia (NVDA)', 'Broadcom (AVGO)', 'Oracle (ORCL)', 'Adobe (ADBE)', 'Cisco (CSCO)', 'Salesforce (CRM)', 'AMD (AMD)', 'Qualcomm (QCOM)'],
     'Financials': ['JPMorgan Chase (JPM)', 'Visa (V)', 'Mastercard (MA)', 'Bank of America (BAC)', 'Goldman Sachs (GS)', 'Morgan Stanley (MS)', 'Wells Fargo (WFC)', 'BlackRock (BLK)', 'American Express (AXP)', 'Citigroup (C)'],
@@ -29,27 +27,24 @@ RAW_WATCHLIST = {
     'Utilities': ['NextEra Energy (NEE)', 'Southern Co (SO)', 'Duke Energy (DUK)', 'American Electric (AEP)', 'Sempra (SRE)', 'Dominion Energy (D)', 'Exelon (EXC)', 'PG&E (PCG)', 'Xcel Energy (XEL)', 'Consolidated Edison (ED)']
 }
 
-# Helper to extract TICKER from "Name (TICKER)"
-def get_ticker(name_str):
-    match = re.search(r'\((.*?)\)', name_str)
-    return match.group(1) if match else name_str
+def process_watchlist(raw):
+    t_map, s_map = {}, {}
+    for sector, stocks in raw.items():
+        tickers = []
+        for s in stocks:
+            match = re.search(r'(.*?)\s\((.*?)\)', s)
+            if match:
+                name, ticker = match.groups()
+                tickers.append(ticker)
+                t_map[ticker] = name
+            else:
+                tickers.append(s)
+                t_map[s] = s
+        s_map[sector] = tickers
+    return s_map, t_map
 
-# Cleaned Ticker Map for API calls
-SECTOR_MAP = {k: [get_ticker(s) for s in v] for k, v in RAW_WATCHLIST.items()}
-
-# --- US INDEX TICKERS ---
-INDEX_TICKERS = {
-    '^GSPC': 'S&P 500', 
-    '^DJI': 'Dow Jones', 
-    '^IXIC': 'Nasdaq', 
-    '^RUT': 'Russell 2000', 
-    '^VIX': 'Volatility (VIX)',
-    'XLK': 'Technology', 
-    'XLF': 'Financials', 
-    'XLE': 'Energy', 
-    'XLV': 'Health Care', 
-    'XLY': 'Cons. Discretionary'
-}
+SECTOR_MAP, NAME_MAP = process_watchlist(RAW_WATCHLIST)
+INDEX_TICKERS = {'^GSPC': 'S&P 500', '^DJI': 'Dow Jones', '^IXIC': 'Nasdaq', '^RUT': 'Russell 2000', '^VIX': 'Volatility (VIX)'}
 
 #####################################
 ########## MODULE 2: DATA EXTRACTION ENGINE
@@ -58,23 +53,19 @@ INDEX_TICKERS = {
 class MarketDataEngine:
     @staticmethod
     def get_valuation_metrics():
-        """SCRAPER: Fetches US Market PE Ratio (S&P 500)."""
         url = "https://www.multpl.com/s-p-500-pe-ratio"
         headers = {'User-Agent': 'Mozilla/5.0'}
         try:
             res = requests.get(url, headers=headers, timeout=15)
             soup = BeautifulSoup(res.text, 'html.parser')
             curr_pe = soup.find("div", {"id": "current-value"}).get_text(strip=True).replace("current", "").strip()
-            summary = "The S&P 500 Shiller PE Ratio is currently at elevated levels compared to historical averages."
-            return summary, curr_pe, "8.2%", ""
-        except: 
-            return "S&P 500 Valuation Analysis.", "24.5x", "8.0%", ""
+            return "The S&P 500 PE ratio is a primary measure of US equity valuation.", curr_pe, "8.2%", ""
+        except: return "US Valuation Snapshot.", "24.5x", "8.1%", ""
 
     @staticmethod
     def get_bulk_stock_stats():
-        """TECHNICALS: Fetches Price, RSI, and US-specific Volume data."""
-        all_tickers = list(set([t for sublist in SECTOR_MAP.values() for t in sublist]))
-        data = yf.download(all_tickers, period="60d", interval="1d", auto_adjust=True)
+        all_tickers = list(NAME_MAP.keys())
+        data = yf.download(all_tickers, period="60d", interval="1d", auto_adjust=True, threads=True)
         results = {}
         for t in all_tickers:
             try:
@@ -82,21 +73,16 @@ class MarketDataEngine:
                 subset.columns = subset.columns.get_level_values(0)
                 prices, vol = subset['Close'].dropna(), subset['Volume'].dropna()
                 if len(prices) < 20: continue
-                
-                avg_vol_20 = vol.iloc[-21:-1].mean()
-                curr_vol = vol.iloc[-1]
-                
                 results[t] = {
                     'price': prices.iloc[-1],
                     'change': ((prices.iloc[-1]/prices.iloc[-2])-1)*100,
                     'rsi': ta.rsi(prices, length=14).iloc[-1],
-                    'vol_ratio': curr_vol / avg_vol_20 if avg_vol_20 > 0 else 1.0,
-                    'curr_vol': curr_vol,
-                    'avg_vol': avg_vol_20
+                    'vol_ratio': vol.iloc[-1] / vol.iloc[-21:-1].mean(),
+                    'curr_vol': vol.iloc[-1],
+                    'avg_vol': vol.iloc[-21:-1].mean()
                 }
             except: continue
         return results
-
 #############################
 #########  MODULE 3.1: THE SEO HERO CARD (US THEME)
 #############################
@@ -143,68 +129,53 @@ class HeroCardBuilder:
 class ReportBuilder:
     @staticmethod
     def format_vol(n):
-        """Formats numbers into US Million/Billion system."""
         if n >= 1e9: return f"{n/1e9:.2f}B"
         if n >= 1e6: return f"{n/1e6:.1f}M"
-        if n >= 1e3: return f"{n/1e3:.0f}K"
-        return f"{n:.0f}"
+        return f"{n/1e3:.0f}K"
 
     @staticmethod
-    def build_html_content(stock_data, idx_returns, val_data, index_info):
+    def build_html_content(stock_data, idx_returns, val_data):
         summary, pe, forecast, _ = val_data
+        html = f"<div style='background:#f8fafc; padding:30px; border-radius:20px; margin-bottom:30px;'><h2>📊 US Valuation Snapshot</h2><p>{summary}</p><b>PE: {pe} | Growth: {forecast}</b></div>"
+        
         perf_map = {INDEX_TICKERS[k]: v for k, v in idx_returns.items() if k in INDEX_TICKERS}
-        sorted_sectors = sorted(perf_map.items(), key=lambda x: x[1], reverse=True)
-
-        html = f"""<style>
-            .sector-block {{ background: white; border: 1px solid #e2e8f0; border-radius: 20px; padding: 25px; margin-bottom: 25px; font-family: 'Inter', sans-serif; }}
-            .stock-grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin-top: 20px; }}
-            .stock-card {{ border: 1px solid #f1f5f9; padding: 15px; border-radius: 12px; font-size: 13px; background:#fff; }}
-            .vol-heat {{ font-size: 12px; font-weight: 700; margin-top: 5px; display: block; }}
-            a {{ text-decoration: none; color: #2563eb; font-weight: 700; }}
-        </style>
-        <div style="background:#f8fafc; padding:30px; border-radius:20px; margin-bottom:30px;">
-            <h2>📊 US Valuation Snapshot</h2>
-            <div style="display:flex; gap:40px; margin:20px 0;">
-                <div><small>S&P 500 PE</small><br><b style="font-size:24px;">{pe}</b></div>
-                <div><small>EST. GROWTH</small><br><b style="font-size:24px; color:#22c55e;">{forecast}</b></div>
-            </div>
-            <p>{summary}</p>
-        </div>"""
-
-        for sector, s_ret in sorted_sectors:
+        for sector, s_ret in sorted(perf_map.items(), key=lambda x: x[1], reverse=True):
             if sector not in SECTOR_MAP: continue
             
-            # SORT STOCKS BY VOL MULTIPLIER
+            # SORT STOCKS BY VOL RATIO
             sector_stocks = [dict(stock_data.get(t, {}), ticker=t) for t in SECTOR_MAP[sector] if t in stock_data]
-            sorted_stocks = sorted(sector_stocks, key=lambda x: x['vol_ratio'], reverse=True)
+            sorted_stocks = sorted(sector_stocks, key=lambda x: x.get('vol_ratio', 0), reverse=True)
 
-            html += f"""<div class="sector-block">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <h3 style="margin:0;">{sector}</h3>
-                    <b style="color:{'#16a34a' if s_ret > 0 else '#dc2626'}">{s_ret:+.2f}%</b>
-                </div>
-                <div style="font-size:11px; color:#64748b; margin-top:8px; font-weight:600;">
-                    💡 Note: VolumeX is a multiplier of 20 Day average volume. High values = Institutional Activity.
-                </div>
-                <div class="stock-grid">"""
+            html += f"<div style='background:white; border:1px solid #e2e8f0; border-radius:20px; padding:25px; margin-bottom:25px;'>"
+            html += f"<h3 style='margin:0;'>{sector} <span style='color:{'#16a34a' if s_ret > 0 else '#dc2626'}'>{s_ret:+.2f}%</span></h3>"
+            html += "<div style='display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:15px; margin-top:20px;'>"
             
             for s in sorted_stocks:
-                t = s['ticker']
-                vol_val = float(s['vol_ratio'])
-                vol_style = "color: #ea580c; background: #fff7ed; padding: 4px; border-radius: 4px;" if vol_val > 2.0 else "color: #64748b;"
-                
+                vol_x = s['vol_ratio']
                 html += f"""
-                <div class="stock-card">
-                    <b>{t}</b><br>
-                    <div style="font-size:18px; font-weight:900; margin:5px 0;">${s['price']:,.2f}</div>
-                    <div style="font-weight:700; color:{'#16a34a' if s['change'] > 0 else '#dc2626'}">{s['change']:+.2f}%</div>
-                    <div style="{vol_style} margin-top:8px;">
-                        <span class="vol-heat">{'🔥' if vol_val > 2.0 else '📈'} VolumeX: {vol_val:.2f}x</span>
-                        <div style="font-size:10px; opacity:0.8;">T: {ReportBuilder.format_vol(s['curr_vol'])} | Avg: {ReportBuilder.format_vol(s['avg_vol'])}</div>
+                <div style='border:1px solid #f1f5f9; padding:15px; border-radius:12px;'>
+                    <small style='color:#64748b; text-transform:uppercase; font-size:10px;'>{NAME_MAP.get(s['ticker'])}</small><br>
+                    <b>{s['ticker']}</b><br>
+                    <span style='font-size:18px; font-weight:900;'>${s['price']:,.2f}</span><br>
+                    <span style='color:{'#16a34a' if s['change']>0 else '#dc2626'}'>{s['change']:+.2f}%</span><br>
+                    <div style='margin-top:10px; font-size:11px; {'color:#ea580c; font-weight:bold' if vol_x > 2.0 else 'color:#64748b'}'>
+                        {'🔥' if vol_x > 2.0 else '📈'} VolX: {vol_x:.2f}x
                     </div>
                 </div>"""
             html += "</div></div>"
         return html
+
+###################################
+### MODULE 4 - WORDPRESS PUBLISHER
+###################################
+class WordPressPublisher:
+    @staticmethod
+    def push_post(title, content):
+        auth = base64.b64encode(f"{WP_USER}:{WP_PASS}".encode()).decode()
+        headers = {'Authorization': f'Basic {auth}', 'Content-Type': 'application/json'}
+        payload = {'title': title, 'content': content, 'status': 'publish', 'categories': [CATEGORY_ID]}
+        res = requests.post(WP_URL, headers=headers, json=payload)
+        return res.status_code == 201
 
 ###################################
 ### MODULE 5 - MAIN EXECUTION FLOW
@@ -217,29 +188,26 @@ def main():
     report_builder = ReportBuilder()
     publisher = WordPressPublisher()
     
-    # 1. Fetch S&P 500 Data
-    index_raw = yf.download('^GSPC', period='5d', interval='1d', auto_adjust=True)
-    if index_raw.empty: return
-    i_close_today = float(index_raw['Close'].iloc[-1])
-    i_change_pct = float(((i_close_today / index_raw['Close'].iloc[-2]) - 1) * 100)
+    # 1. Fetch Benchmarks
+    bench_raw = yf.download(['^GSPC', '^VIX'], period='5d')['Close']
+    i_change = ((bench_raw['^GSPC'].iloc[-1] / bench_raw['^GSPC'].iloc[-2]) - 1) * 100
+    vix_val = bench_raw['^VIX'].iloc[-1]
     
-    # 2. Fetch Index Data
-    idx_raw = yf.download(list(INDEX_TICKERS.keys()), period='5d')['Close'].dropna(axis=1, how='all')
+    # 2. Sector Performance
+    idx_raw = yf.download(list(INDEX_TICKERS.keys()), period='5d')['Close']
     idx_returns = ((idx_raw.iloc[-1] / idx_raw.iloc[-2] - 1) * 100).fillna(0)
     
-    # 3. Data Collection
+    # 3. Bulk Stats
     stock_stats = data_engine.get_bulk_stock_stats()
     val_metrics = data_engine.get_valuation_metrics()
     
-    # 4. Assembly & Publish
-    hero_html = hero_builder.build_hero_card(index_raw, i_change_pct)
-    body_html = report_builder.build_html_content(stock_stats, idx_returns, val_metrics, (i_close_today, i_change_pct))
+    # 4. Assembly
+    hero_html = hero_builder.build_hero_card(bench_raw[['^GSPC']].rename(columns={'^GSPC': 'Close'}), i_change, vix_val)
+    body_html = report_builder.build_html_content(stock_stats, idx_returns, val_metrics)
     
-    post_date = datetime.now().strftime('%d %b %Y')
-    post_title = f"US Market Wrap {post_date}: S&P 500 {i_change_pct:+.2f}%"
-    
-    if publisher.push_post(post_title, hero_html + body_html, {}):
-        print(f"✅ Success: {post_title}")
+    post_title = f"US Market Wrap {datetime.now().strftime('%d %b %Y')}: S&P 500 {i_change:+.2f}%"
+    if publisher.push_post(post_title, hero_html + body_html):
+        print(f"✅ Post Successful: {post_title}")
 
 if __name__ == "__main__":
     main()
