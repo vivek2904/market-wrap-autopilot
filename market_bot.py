@@ -83,82 +83,81 @@ class MarketDataEngine:
             except: continue
         return results
 
-#############################################
-## MODULE 3: HTML & SEO REPORT BUILDER
-#############################################
-
-class ReportBuilder:
+class HeroCardBuilder:
     @staticmethod
-    def get_seo_tags(change):
-        return {
-            'aioseo_title': f"Market Wrap: Nifty {change:+.2f}% | Sector Analysis & 170+ Stocks",
-            'aioseo_description': f"Nifty ends at {change:+.2f}%. Full NSE analysis with RSI technicals, valuation forecasts, and institutional volume shockers."
-        }
+    def get_market_sentiment(change):
+        """Generates punchy, irresistible SEO-optimized headlines based on daily move."""
+        if change > 1.2:
+            return "Bulls on Rampage! 🚀 Nifty Shatters Resistance"
+        elif change > 0.3:
+            return "Green Shoot Recovery 📈 Bulls Defend Key Levels"
+        elif change >= -0.3 and change <= 0.3:
+            return "Tug-of-War! ⚖️ Market Braces for Major Breakout"
+        elif change < -1.2:
+            return "Blood on D-Street! 🩸 Bears Aggressive as Support Fails"
+        else:
+            return "Bears in Control 🔻 Sellers Dominate the Session"
 
     @staticmethod
-    def build_html_content(stock_data, idx_returns, val_data, nifty_info):
-        summary, pe, forecast, v_table = val_data
-        n_price, n_change = nifty_info
-        
-        perf_map = {INDEX_TICKERS[k]: v for k, v in idx_returns.items() if k in INDEX_TICKERS}
-        sorted_sectors = sorted(perf_map.items(), key=lambda x: x[1], reverse=True)
-
-        html = f"""
-        <style>
-            .market-card {{ font-family: 'Inter', -apple-system, sans-serif; max-width: 950px; margin: auto; color: #1e293b; line-height: 1.6; }}
-            .header-box {{ background: #0f172a; color: white; padding: 50px 25px; border-radius: 24px; text-align: center; margin-bottom: 30px; }}
-            .valuation-table {{ width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }}
-            .valuation-table th {{ background: #f1f5f9; text-align: left; padding: 12px; border-bottom: 2px solid #e2e8f0; }}
-            .sector-block {{ background: white; border: 1px solid #e2e8f0; border-radius: 20px; padding: 25px; margin-bottom: 25px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }}
-            .stock-grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; margin-top: 20px; }}
-            .stock-card {{ border: 1px solid #f1f5f9; padding: 12px; border-radius: 10px; font-size: 13px; background: #fff; }}
-            .tag {{ font-size: 10px; padding: 2px 5px; border-radius: 4px; font-weight: bold; text-transform: uppercase; margin-right: 4px; }}
-            .vol-label {{ font-size: 11px; color: #64748b; font-weight: 600; margin-top: 4px; display: block; }}
-            a {{ text-decoration: none; color: #3b82f6; font-weight: 700; }}
-        </style>
-        <div class="market-card">
-            <div class="header-box">
-                <span style="font-size: 64px; font-weight: 800; display: block;">{n_price:,.2f}</span>
-                <div style="font-size: 24px; color: {'#4ade80' if n_change > 0 else '#f87171'}; font-weight: 700;">
-                    {'▲' if n_change > 0 else '▼'} {n_change:+.2f}%
-                </div>
-            </div>
-            <div style="background:#f8fafc; padding:30px; border-radius:20px; border:1px solid #e2e8f0; margin-bottom:30px;">
-                <h2 style="margin-top:0;">📊 Valuation Snapshot</h2>
-                <div style="display:flex; gap:40px; margin:25px 0; background:white; padding:20px; border-radius:15px;">
-                    <div><small>CURRENT PE</small><br><b style="font-size:28px;">{pe}</b></div>
-                    <div><small>1Y FORECAST</small><br><b style="font-size:28px; color:#22c55e;">{forecast}</b></div>
-                </div>
-                <p style="font-size:17px;">{summary}</p>
-                {v_table}
-            </div>
+    def build_hero_card(nifty_df, change):
         """
-        for sector, s_ret in sorted_sectors:
-            if sector not in SECTOR_MAP: continue
-            html += f"""<div class="sector-block">
-                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #f1f5f9; padding-bottom:10px;">
-                    <h3 style="margin:0; font-size:22px;">{sector}</h3>
-                    <b style="font-size:20px; color:{'#16a34a' if s_ret > 0 else '#dc2626'}">{s_ret:+.2f}%</b>
-                </div>
-                <div class="stock-grid">"""
-            for t in SECTOR_MAP[sector]:
-                s = stock_data.get(t, {'price':0, 'change':0, 'rsi':50, 'vol_ratio':1.0})
-                ext_url = f"https://www.google.com/finance/quote/{t}:NSE"
-                int_url = f"{WP_URL.split('wp-json')[0]}?s={t}"
-                rsi_tag = '<span class="tag" style="background:#fee2e2; color:#ef4444;">Overbought</span>' if s['rsi'] > 70 else \
-                          ('<span class="tag" style="background:#dcfce7; color:#22c55e;">Oversold</span>' if s['rsi'] < 30 else '')
-                vol_color = "#d97706" if s['vol_ratio'] > 2.0 else "#64748b"
+        Creates a high-contrast Hero Card with OHLC and Sentiment.
+        nifty_df: The yfinance dataframe for ^NSEI (Nifty 50)
+        """
+        # Get the last two days of data
+        today = nifty_df.iloc[-1]
+        yesterday = nifty_df.iloc[-2]
+        
+        points_change = today['Close'] - yesterday['Close']
+        sentiment_headline = HeroCardBuilder.get_market_sentiment(change)
+        
+        # Color logic for UI
+        brand_color = "#22c55e" if change > 0 else "#ef4444"
+        bg_gradient = "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)"
+        
+        return f"""
+        <div style="background: {bg_gradient}; color: white; padding: 40px 30px; border-radius: 24px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3); margin-bottom: 40px; font-family: 'Inter', sans-serif;">
+            
+            <div style="text-transform: uppercase; letter-spacing: 2px; font-size: 13px; font-weight: 800; color: {brand_color}; margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">
+                {sentiment_headline}
+            </div>
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 30px;">
                 
-                html += f"""
-                <div class="stock-card">
-                    <b><a href="{int_url}">{t}</a></b><br>
-                    <div style="font-size:16px; font-weight:800; margin:4px 0;"><a href="{ext_url}" target="_blank" style="color:#1e293b;">₹{s['price']:,.2f}</a></div>
-                    <div style="font-weight:700; color:{'#16a34a' if s['change'] > 0 else '#dc2626'}">{s['change']:+.2f}%</div>
-                    <span class="vol-label" style="color:{vol_color}">Vol: {s['vol_ratio']:.2f}x</span>
-                    <div style="margin-top:8px;">{rsi_tag}</div>
-                </div>"""
-            html += "</div></div>"
-        return html + "</div>"
+                <div style="flex: 1; min-width: 250px;">
+                    <span style="font-size: 16px; opacity: 0.6; font-weight: 600; display: block; margin-bottom: 5px;">NIFTY 50 INDEX</span>
+                    <span style="font-size: 68px; font-weight: 900; line-height: 0.9; letter-spacing: -2px;">{today['Close']:,.2f}</span>
+                    
+                    <div style="margin-top: 15px; font-size: 26px; font-weight: 700; color: {brand_color};">
+                        {'▲' if change > 0 else '▼'} {abs(change):.2f}% 
+                        <span style="font-size: 16px; opacity: 0.8; font-weight: 500; color: white; margin-left: 12px; background: rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 8px;">
+                            {points_change:+.2f} pts
+                        </span>
+                    </div>
+                </div>
+                
+                <div style="flex: 1; min-width: 280px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; background: rgba(255,255,255,0.03); padding: 25px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1);">
+                    <div style="border-right: 1px solid rgba(255,255,255,0.1); padding-right: 15px;">
+                        <small style="opacity:0.5; display:block; font-size:10px; text-transform:uppercase; margin-bottom:4px;">Prev Close</small>
+                        <b style="font-size:17px; color: #94a3b8;">{yesterday['Close']:,.2f}</b>
+                    </div>
+                    <div style="padding-left: 5px;">
+                        <small style="opacity:0.5; display:block; font-size:10px; text-transform:uppercase; margin-bottom:4px;">Open Price</small>
+                        <b style="font-size:17px;">{today['Open']:,.2f}</b>
+                    </div>
+                    <div style="border-right: 1px solid rgba(255,255,255,0.1); padding-right: 15px; margin-top: 10px;">
+                        <small style="opacity:0.5; display:block; font-size:10px; text-transform:uppercase; margin-bottom:4px;">Day High</small>
+                        <b style="font-size:17px; color: #4ade80;">{today['High']:,.2f}</b>
+                    </div>
+                    <div style="padding-left: 5px; margin-top: 10px;">
+                        <small style="opacity:0.5; display:block; font-size:10px; text-transform:uppercase; margin-bottom:4px;">Day Low</small>
+                        <b style="font-size:17px; color: #f87171;">{today['Low']:,.2f}</b>
+                    </div>
+                </div>
+                
+            </div>
+        </div>
+        """
 
 #############################################
 ## MODULE 4: WORDPRESS PUBLISHER
@@ -176,30 +175,53 @@ class WordPressPublisher:
         res = requests.post(WP_URL, headers=headers, json=payload)
         return res.status_code == 201
 
-#############################################
-## MODULE 5: MAIN EXECUTION FLOW
-#############################################
-
 def main():
-    engine = MarketDataEngine()
-    val_data = engine.get_valuation_metrics()
-    stock_stats = engine.get_bulk_stock_stats()
+    # 1. Initialize Engines
+    data_engine = MarketDataEngine()
+    report_builder = ReportBuilder()
+    hero_builder = HeroCardBuilder()
+    publisher = WordPressPublisher()
     
+    # 2. Fetch Market Data
+    # Fetch Nifty 50 OHLC for Hero Card
+    nifty_raw = yf.download('^NSEI', period='5d', interval='1d', auto_adjust=True)
+    nifty_change = ((nifty_raw['Close'].iloc[-1] / nifty_raw['Close'].iloc[-2]) - 1) * 100
+    
+    # Fetch Sector Returns for Sorting
     idx_raw = yf.download(list(INDEX_TICKERS.keys()), period='5d')['Close'].dropna(axis=1)
     idx_returns = ((idx_raw.iloc[-1] / idx_raw.iloc[-2] - 1) * 100).dropna()
-    n_price, n_change = idx_raw.iloc[-1]['^NSEI'], idx_returns['^NSEI']
     
-    builder = ReportBuilder()
-    html_content = builder.build_html_content(stock_stats, idx_returns, val_data, (n_price, n_change))
-    seo_payload = builder.get_seo_tags(n_change)
+    # Fetch Watchlist Technicals & Valuation Scrape
+    stock_stats = data_engine.get_bulk_stock_stats()
+    val_metrics = data_engine.get_valuation_metrics() # (summary, pe, forecast, table)
     
-    publisher = WordPressPublisher()
-    post_title = f"Market Wrap {datetime.now().strftime('%d %b')}: Nifty {n_change:+.2f}% | Top Performance Sectors"
+    # 3. Assemble the Report Components
+    # Build the Hero Card first
+    hero_html = hero_builder.build_hero_card(nifty_raw, nifty_change)
     
-    if publisher.push_post(post_title, html_content, seo_payload):
-        print(f"✅ Post Successful: {post_title}")
+    # Build the rest of the body (Valuation + Sector Grids)
+    # Pass (nifty_price, nifty_change) as a tuple
+    body_html = report_builder.build_html_content(
+        stock_stats, 
+        idx_returns, 
+        val_metrics, 
+        (nifty_raw['Close'].iloc[-1], nifty_change)
+    )
+    
+    # Final Full Content (Hero + Body)
+    full_html = hero_html + body_html
+    
+    # 4. SEO Payload
+    seo_tags = report_builder.get_seo_tags(nifty_change)
+    
+    # 5. Execute Posting
+    post_date = datetime.now().strftime('%d %b')
+    post_title = f"India Market Wrap {post_date}: Nifty {nifty_change:+.2f}% | Sectoral Performance"
+    
+    if publisher.push_post(post_title, full_html, seo_tags):
+        print(f"✅ Mission Accomplished! Post Live: {post_title}")
     else:
-        print("❌ Posting Failed.")
+        print("❌ Posting Failed. Check API credentials or network.")
 
 if __name__ == "__main__":
     main()
