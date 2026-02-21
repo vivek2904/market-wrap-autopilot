@@ -123,7 +123,7 @@ class HeroCardBuilder:
         today = nifty_data.iloc[-1]
         yesterday = nifty_data.iloc[-2]
         
-        # Explicit scalar conversion
+        # Explicit scalar conversion for formatting
         curr_close = float(today['Close'])
         curr_open = float(today['Open'])
         curr_high = float(today['High'])
@@ -175,11 +175,10 @@ class HeroCardBuilder:
         </div>
         """
 
-
 #############################################
 ###MODULE 3.2: THE HEAT-MAPPED WATCHLIST
 #############################################
-   class ReportBuilder:
+  class ReportBuilder:
     @staticmethod
     def get_seo_tags(change):
         return {
@@ -233,7 +232,7 @@ class HeroCardBuilder:
                 s = stock_data.get(t, {'price':0, 'change':0, 'rsi':50, 'vol_ratio':1.0})
                 ext_url, int_url = f"https://www.google.com/finance/quote/{t}:NSE", f"{WP_URL.split('wp-json')[0]}?s={t}"
                 
-                # --- VOLUME HEAT LOGIC ---
+                # --- VOLUME HEAT LOGIC (TIMES 20D AVG) ---
                 vol_val = float(s['vol_ratio'])
                 if vol_val > 2.5:
                     vol_html = f'<span class="vol-heat" style="color: #ea580c; background: #fff7ed; padding: 2px 4px; border-radius: 4px;">🔥 {vol_val:.2f}x Vol</span>'
