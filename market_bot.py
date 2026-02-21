@@ -32,49 +32,43 @@ SECTOR_MAP = {
     'Services': ['LT', 'ADANIPORTS', 'APOLLOHOSP', 'HDFCLIFE', 'SBILIFE', 'TRENT', 'INDIGO', 'VBL', 'TATACOMM', 'GMRINFRA']
 }
 
+# Tickers updated for better stability
 INDEX_TICKERS = {'^NSEI': 'NIFTY 50', '^NSEBANK': 'Nifty Bank', '^CNXIT': 'IT Services', '^CNXAUTO': 'Automobile', '^CNXFMCG': 'FMCG', '^CNXMETAL': 'Metals', '^CNXPHARMA': 'Pharma', '^CNXENERGY': 'Energy', '^CNXREALTY': 'Realty', '^CNXINFRA': 'Infrastructure', '^CNXFIN': 'Financial Services', '^CNXPSUBANK': 'PSU Bank', '^CNXMEDIA': 'Media', '^CNXCONSUMP': 'Consumption', '^CNXPSE': 'PSE', '^CNXCPSE': 'CPSE', '^CNXCOMMOD': 'Commodities', '^CNXSERVICE': 'Services'}
 
-# --- 2. UTILITIES ---
 def get_links(ticker):
-    """Generates SEO outlinks and internal search links."""
     clean = ticker.replace(".NS", "").upper()
     return f"https://www.google.com/finance/quote/{clean}:NSE", f"{WP_URL.split('wp-json')[0]}?s={clean}"
 
 def get_valuation_and_summary():
-    """Robust scraper for live P/E and Forecast data."""
     url = "https://worldperatio.com/area/india/"
     headers = {'User-Agent': 'Mozilla/5.0'}
     try:
         response = requests.get(url, headers=headers, timeout=15)
         soup = BeautifulSoup(response.text, 'html.parser')
-        
-        # Extract Summary
         paragraphs = soup.find_all('p', limit=3)
         summary_text = " ".join([p.get_text() for p in paragraphs if len(p.get_text()) > 50])
 
         tables = pd.read_html(io.StringIO(response.text))
-        current_pe, return_val, metrics_table_html = "N/A", "12.4%", ""
+        current_pe, return_val, metrics_table_html = "N/A", "N/A", ""
 
         for df in tables:
-            # Targeted PE Scraping from the column headers
             pe_col = [c for c in df.columns if "vs" in str(c)]
             if pe_col and current_pe == "N/A":
-                current_pe = str(pe_col[0]).split("vs")[-1].strip()
+                # Cleaning the PE from quotes and extra characters
+                raw_pe = str(pe_col[0]).split("vs")[-1].strip()
+                current_pe = raw_pe.replace("'", "").replace(")", "").replace("(", "").strip()
             
-            # Historical Stats Table
             if 'Period' in df.columns and any('Average P/E' in col for col in df.columns):
                 metrics_table_html = df[['Period', 'Average P/E (μ)', 'Std Dev (σ)', 'vs Current P/E']].head(5).to_html(index=False, border=0, classes='valuation-table')
             
-            # Forward Median Return Table
             if not df.empty and '1 Years' in str(df.iloc[:, 0].values):
                 return_val = f"{df.iloc[0, 6]}%"
 
         return summary_text, current_pe, return_val, metrics_table_html
     except:
-        return "Nifty valuation metrics provide context for current market levels.", "Live...", "12.4%", ""
+        return "Market valuation metrics provide context for current market levels.", "Analyzing...", "N/A", ""
 
 def fetch_analysis_data():
-    """Calculates technicals (RSI/SMA) for all 170+ stocks."""
     all_tickers = list(set([f"{t}.NS" for sublist in SECTOR_MAP.values() for t in sublist]))
     data = yf.download(all_tickers, period="60d", interval="1d", auto_adjust=True)
     results = {}
@@ -91,16 +85,19 @@ def fetch_analysis_data():
         except: continue
     return results
 
-# --- 3. REPORT BUILDER ---
 def build_report():
-    idx_data = yf.download(list(INDEX_TICKERS.keys()), period='2d')['Close']
-    idx_returns = (idx_data.iloc[-1] / idx_data.iloc[-2] - 1) * 100
-    nifty_price, nifty_change = idx_data.iloc[-1]['^NSEI'], idx_returns['^NSEI']
+    # Fetch Index Data
+    idx_data = yf.download(list(INDEX_TICKERS.keys()), period='5d')['Close'].dropna(axis=1)
+    # Calculate returns and drop any NaN values to fix the screenshot error
+    idx_returns = ((idx_data.iloc[-1] / idx_data.iloc[-2] - 1) * 100).dropna()
+    
+    nifty_price = idx_data.iloc[-1].get('^NSEI', 0)
+    nifty_change = idx_returns.get('^NSEI', 0)
     
     stock_analysis = fetch_analysis_data()
     summary, pe, target_return, v_table = get_valuation_and_summary()
 
-    # GROWTH MARKET LOGIC: Shifted labels for India's premium valuation
+    # GROWTH MARKET LABEL LOGIC
     try: pe_float = float(pe)
     except: pe_float = 23.0
     val_status = "🚀 High Growth Premium" if pe_float > 25 else "⚖️ Growth Value" if pe_float > 21 else "💎 Massive Opportunity"
@@ -109,11 +106,9 @@ def build_report():
     <style>
         .market-card {{ font-family: 'Inter', -apple-system, sans-serif; max-width: 950px; margin: auto; color: #1e293b; line-height: 1.6; }}
         .header-box {{ background: #0f172a; color: white; padding: 50px 25px; border-radius: 24px; text-align: center; margin-bottom: 30px; }}
-        .nifty-price {{ font-size: 64px; font-weight: 800; display: block; }}
         .insight-box {{ background: #f8fafc; border: 1px solid #e2e8f0; padding: 30px; border-radius: 20px; margin-bottom: 30px; }}
         .valuation-table {{ width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }}
         .valuation-table th {{ background: #f1f5f9; text-align: left; padding: 12px; border-bottom: 2px solid #e2e8f0; }}
-        .valuation-table td {{ padding: 12px; border-bottom: 1px solid #f1f5f9; }}
         .sector-block {{ background: white; border: 1px solid #e2e8f0; border-radius: 20px; padding: 25px; margin-bottom: 25px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }}
         .stock-grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; margin-top: 20px; }}
         .stock-card {{ border: 1px solid #f1f5f9; padding: 12px; border-radius: 10px; font-size: 13px; background: #fff; }}
@@ -124,7 +119,7 @@ def build_report():
     <div class="market-card">
         <div class="header-box">
             <span style="opacity: 0.7; letter-spacing: 2px; font-weight: 600;">DAILY NIFTY 50 INSIGHTS</span>
-            <span class="nifty-price">{nifty_price:,.2f}</span>
+            <span style="font-size: 64px; font-weight: 800; display: block;">{nifty_price:,.2f}</span>
             <div style="font-size: 24px; color: {'#4ade80' if nifty_change > 0 else '#f87171'}; font-weight: 700;">
                 {'▲' if nifty_change > 0 else '▼'} {nifty_change:.2f}% ({val_status})
             </div>
@@ -140,12 +135,18 @@ def build_report():
             {v_table}
         </div>
 
-        <h2 style="border-left: 8px solid #3b82f6; padding-left: 15px; margin: 50px 0 25px; font-size: 28px;">🏗️ Sector & Constituent Performance</h2>
+        <h2 style="border-left: 8px solid #3b82f6; padding-left: 15px; margin: 50px 0 25px; font-size: 28px;">🏗️ Sectoral Performance (Top Gainers First)</h2>
     """
 
-    for sector_name, tickers in SECTOR_MAP.items():
-        idx_key = [k for k, v in INDEX_TICKERS.items() if v == sector_name]
-        s_return = idx_returns[idx_key[0]] if idx_key else 0
+    # SORTING SECTORS: Descending order of performance
+    # Filter only tickers that exist in idx_returns and map to SECTOR_MAP names
+    performance_map = {INDEX_TICKERS[k]: v for k, v in idx_returns.items() if k in INDEX_TICKERS}
+    sorted_sectors = sorted(performance_map.items(), key=lambda item: item[1], reverse=True)
+
+    for sector_name, s_return in sorted_sectors:
+        if sector_name not in SECTOR_MAP: continue
+        tickers = SECTOR_MAP[sector_name]
+        
         html += f"""
         <div class="sector-block">
             <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px;">
@@ -171,15 +172,14 @@ def build_report():
     html += "</div>"
     return html, nifty_change
 
-# --- 4. POSTING ---
 def post():
     content, change = build_report()
     if content:
         auth = base64.b64encode(f"{WP_USER}:{WP_PASS}".encode()).decode()
         headers = {'Authorization': f'Basic {auth}', 'Content-Type': 'application/json'}
-        payload = {'title': f"Market Wrap {datetime.now().strftime('%d %b')}: Nifty {change:.2f}% | 170+ Stocks Analysis", 'content': content, 'status': 'publish', 'categories': [CATEGORY_ID]}
+        payload = {'title': f"Market Wrap {datetime.now().strftime('%d %b')}: Nifty {change:.2f}% | Top Performing Sectors", 'content': content, 'status': 'publish', 'categories': [CATEGORY_ID]}
         res = requests.post(WP_URL, headers=headers, json=payload)
-        print(f"✅ Live: {payload['title']}" if res.status_code == 201 else f"❌ Error: {res.text}")
+        print(f"✅ Success: {payload['title']}" if res.status_code == 201 else f"❌ Error: {res.text}")
 
 if __name__ == "__main__":
     post()
