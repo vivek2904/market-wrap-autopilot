@@ -18,7 +18,7 @@ jobs:
           python-version: '3.12'
           
       - name: Install Libs
-        run: pip install requests pandas lxml yfinance beautifulsoup4 pandas_ta
+        run: pip install requests pandas lxml yfinance beautifulsoup4 pandas_ta streamlit
         
       - name: Run Bot
         env:
