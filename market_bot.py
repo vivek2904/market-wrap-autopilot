@@ -63,27 +63,35 @@ INDEX_TICKERS = {
 class MarketDataEngine:
     @staticmethod
     def get_valuation_metrics():
+        """SCRAPER: Fetches PE, Forecasts, and Historical Tables from WorldPERatio."""
         url = "https://worldperatio.com/area/india/"
         headers = {'User-Agent': 'Mozilla/5.0'}
         try:
             res = requests.get(url, headers=headers, timeout=15)
             soup = BeautifulSoup(res.text, 'html.parser')
+            # Extract summary text
             summary = " ".join([p.get_text() for p in soup.find_all('p', limit=3) if len(p.get_text()) > 50])
             tables = pd.read_html(io.StringIO(res.text))
             pe, forecast, table_html = "N/A", "N/A", ""
             for df in tables:
+                # Find Current PE
                 pe_col = [c for c in df.columns if "vs" in str(c)]
                 if pe_col and pe == "N/A":
                     pe = str(pe_col[0]).split("vs")[-1].strip().translate({ord(i): None for i in "()'"})
+                # Find Historical Averages Table
                 if 'Period' in df.columns and any('Average P/E' in col for col in df.columns):
                     table_html = df[['Period', 'Average P/E (μ)', 'Std Dev (σ)', 'vs Current P/E']].head(5).to_html(index=False, border=0, classes='valuation-table')
+                # Find 1Y Forecast
                 if not df.empty and '1 Years' in str(df.iloc[:, 0].values):
                     forecast = f"{df.iloc[0, 6]}%"
             return summary, pe, forecast, table_html
-        except: return "Valuation Analysis", "Live...", "7.33%", ""
+        except Exception as e: 
+            print(f"⚠️ Valuation Scrape Error: {e}")
+            return "Historical analysis for Nifty valuation.", "Analyzing...", "7.33%", ""
 
     @staticmethod
     def get_bulk_stock_stats():
+        """TECHNICALS: Fetches Price, RSI, Multipliers, and RAW Volume data."""
         all_tickers = list(set([f"{t}.NS" for sublist in SECTOR_MAP.values() for t in sublist]))
         data = yf.download(all_tickers, period="60d", interval="1d", auto_adjust=True)
         results = {}
@@ -93,16 +101,22 @@ class MarketDataEngine:
                 subset.columns = subset.columns.get_level_values(0)
                 prices, vol = subset['Close'].dropna(), subset['Volume'].dropna()
                 if len(prices) < 20: continue
-                avg_vol = vol.iloc[-21:-1].mean()
+                
+                # Volume Calculations
+                avg_vol_20 = vol.iloc[-21:-1].mean()
+                curr_vol_today = vol.iloc[-1]
+                
                 results[t.replace(".NS", "")] = {
                     'price': prices.iloc[-1],
                     'change': ((prices.iloc[-1]/prices.iloc[-2])-1)*100,
                     'rsi': ta.rsi(prices, length=14).iloc[-1],
-                    'vol_ratio': vol.iloc[-1] / avg_vol if avg_vol > 0 else 1.0
+                    'vol_ratio': curr_vol_today / avg_vol_20 if avg_vol_20 > 0 else 1.0,
+                    'curr_vol': curr_vol_today,  # NEW: Added raw today vol
+                    'avg_vol': avg_vol_20        # NEW: Added raw avg vol
                 }
-            except: continue
+            except Exception as e: 
+                continue
         return results
-
 #############################################
 ## MODULE 3.1: THE SEO HERO CARD (DYNAMIC UI)
 #############################################
@@ -189,6 +203,14 @@ class ReportBuilder:
         }
 
     @staticmethod
+    def format_vol(n):
+        """Formats numbers into Indian Lakh/Crore system for readability."""
+        if n >= 1e7: return f"{n/1e7:.2f}Cr"
+        if n >= 1e5: return f"{n/1e5:.2f}L"
+        if n >= 1e3: return f"{n/1e3:.1f}K"
+        return f"{n:.0f}"
+
+    @staticmethod
     def build_html_content(stock_data, idx_returns, val_data, nifty_info):
         summary, pe, forecast, v_table = val_data
         
@@ -202,10 +224,11 @@ class ReportBuilder:
             .valuation-table {{ width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }}
             .valuation-table th {{ background: #f1f5f9; text-align: left; padding: 12px; border-bottom: 2px solid #e2e8f0; }}
             .sector-block {{ background: white; border: 1px solid #e2e8f0; border-radius: 20px; padding: 25px; margin-bottom: 25px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }}
-            .stock-grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; margin-top: 20px; }}
+            .stock-grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin-top: 20px; }}
             .stock-card {{ border: 1px solid #f1f5f9; padding: 12px; border-radius: 10px; font-size: 13px; background: #fff; transition: transform 0.2s; }}
             .stock-card:hover {{ transform: translateY(-3px); border-color: #3b82f6; }}
             .vol-heat {{ font-size: 11px; font-weight: 700; margin-top: 6px; display: block; }}
+            .vol-subtext {{ font-size: 10px; color: #94a3b8; margin-top: 4px; line-height: 1.2; }}
             .tag {{ font-size: 10px; padding: 2px 5px; border-radius: 4px; font-weight: bold; text-transform: uppercase; }}
             a {{ text-decoration: none; color: #3b82f6; font-weight: 700; }}
         </style>
@@ -224,14 +247,14 @@ class ReportBuilder:
         for sector, s_ret in sorted_sectors:
             if sector not in SECTOR_MAP: continue
             
-            # --- NEW STOCK SORTING LOGIC ---
             # Extract and sort stocks by the volume multiplier (vol_ratio)
             sector_stocks = []
             for t in SECTOR_MAP[sector]:
-                stats = stock_data.get(t, {'price':0, 'change':0, 'rsi':50, 'vol_ratio':1.0})
+                # Capture full data including new volume fields
+                stats = stock_data.get(t, {'price':0, 'change':0, 'rsi':50, 'vol_ratio':1.0, 'curr_vol':0, 'avg_vol':1})
                 sector_stocks.append({'ticker': t, **stats})
             
-            # Descending sort: Highest volume shockers first
+            # Sort: Highest volume shockers first
             sorted_stocks = sorted(sector_stocks, key=lambda x: x['vol_ratio'], reverse=True)
 
             html += f"""<div class="sector-block">
@@ -239,8 +262,8 @@ class ReportBuilder:
                     <h3 style="margin:0; font-size:22px;">{sector}</h3>
                     <b style="font-size:20px; color:{'#16a34a' if s_ret > 0 else '#dc2626'}">{s_ret:+.2f}%</b>
                 </div>
-                <div style="font-size: 13px; color: #64748b; margin-top: 8px; font-style: italic;">
-                    Note: "Vol X" indicates the multiplier relative to the 20-day average volume.
+                <div style="font-size: 13px; color: #64748b; margin-top: 8px; font-style: italic; font-weight: 600;">
+                    💡 VolumeX is the multiplier of 20 Day average volume. Sorted by highest institutional activity first.
                 </div>
                 <div class="stock-grid">"""
             
@@ -248,14 +271,21 @@ class ReportBuilder:
                 t = s['ticker']
                 ext_url, int_url = f"https://www.google.com/finance/quote/{t}:NSE", f"{WP_URL.split('wp-json')[0]}?s={t}"
                 
+                # Format raw volume numbers
+                t_vol = ReportBuilder.format_vol(s['curr_vol'])
+                a_vol = ReportBuilder.format_vol(s['avg_vol'])
+                
                 # --- HEAT-MAPPED VOLUME RATIO ---
                 vol_val = float(s['vol_ratio'])
                 if vol_val > 2.5:
-                    vol_html = f'<span class="vol-heat" style="color: #ea580c; background: #fff7ed; padding: 2px 4px; border-radius: 4px;">🔥 {vol_val:.2f}x Vol</span>'
+                    vol_style = "color: #ea580c; background: #fff7ed; padding: 4px; border-radius: 6px; border: 1px solid #ffedd5;"
+                    vol_label = f"🔥 {vol_val:.2f}x Vol"
                 elif vol_val > 1.5:
-                    vol_html = f'<span class="vol-heat" style="color: #d97706;">📈 {vol_val:.2f}x Vol</span>'
+                    vol_style = "color: #d97706;"
+                    vol_label = f"📈 {vol_val:.2f}x Vol"
                 else:
-                    vol_html = f'<span class="vol-heat" style="color: #64748b;">{vol_val:.2f}x Vol</span>'
+                    vol_style = "color: #64748b;"
+                    vol_label = f"{vol_val:.2f}x Vol"
                 
                 rsi_tag = '<span class="tag" style="background:#fee2e2; color:#ef4444;">Overbought</span>' if s['rsi'] > 70 else \
                           ('<span class="tag" style="background:#dcfce7; color:#22c55e;">Oversold</span>' if s['rsi'] < 30 else '')
@@ -265,7 +295,12 @@ class ReportBuilder:
                     <b><a href="{int_url}">{t}</a></b><br>
                     <div style="font-size:16px; font-weight:800; margin:4px 0;"><a href="{ext_url}" target="_blank" style="color:#1e293b;">₹{s['price']:,.2f}</a></div>
                     <div style="font-weight:700; color:{'#16a34a' if s['change'] > 0 else '#dc2626'}">{s['change']:+.2f}%</div>
-                    {vol_html}
+                    
+                    <div style="{vol_style} margin-top:8px;">
+                        <span class="vol-heat">{vol_label}</span>
+                        <div class="vol-subtext">Today: {t_vol} | Avg: {a_vol}</div>
+                    </div>
+                    
                     <div style="margin-top:8px;">{rsi_tag}</div>
                 </div>"""
             html += "</div></div>"
