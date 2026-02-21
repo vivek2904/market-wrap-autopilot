@@ -5,7 +5,7 @@ import pandas as pd
 st.set_page_config(layout="wide")
 
 # ==============================
-# 🎨 PROFESSIONAL PREMIUM STYLING
+# 🎨 PREMIUM PROFESSIONAL STYLING
 # ==============================
 st.markdown("""
 <style>
@@ -14,27 +14,27 @@ body {
     background-color: #f4f6f9;
 }
 
-/* ====== Top Nifty Card ====== */
+/* ====== NIFTY TOP CARD ====== */
 .nifty-card {
     background: linear-gradient(135deg, #0f172a, #1e293b);
-    padding: 45px;
-    border-radius: 20px;
+    padding: 50px;
+    border-radius: 22px;
     text-align: center;
     color: white;
-    box-shadow: 0px 15px 40px rgba(0,0,0,0.25);
+    box-shadow: 0px 20px 45px rgba(0,0,0,0.25);
     margin-bottom: 40px;
 }
 
 .nifty-title {
-    font-size: 16px;
-    letter-spacing: 3px;
+    font-size: 15px;
+    letter-spacing: 4px;
     color: #94a3b8;
 }
 
 .nifty-value {
-    font-size: 70px;
+    font-size: 72px;
     font-weight: 800;
-    margin: 10px 0;
+    margin: 12px 0;
 }
 
 .nifty-change-positive {
@@ -49,20 +49,39 @@ body {
     color: #ef4444;
 }
 
-/* ====== Section Header ====== */
-.section-title {
-    font-size: 30px;
+/* ====== VALUATION CARD ====== */
+.valuation-card {
+    background: white;
+    padding: 35px;
+    border-radius: 20px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+    margin-bottom: 40px;
+}
+
+.valuation-title {
+    font-size: 28px;
     font-weight: 700;
-    margin: 30px 0 10px 0;
+    margin-bottom: 20px;
     color: #111827;
 }
 
-/* ====== Sector Card ====== */
+.metric-label {
+    font-size: 15px;
+    color: #6b7280;
+}
+
+.metric-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: #111827;
+}
+
+/* ====== SECTOR CARD ====== */
 .sector-card {
     background: white;
     padding: 30px;
-    border-radius: 18px;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+    border-radius: 20px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.08);
     margin-bottom: 40px;
 }
 
@@ -72,7 +91,7 @@ body {
     margin-bottom: 20px;
 }
 
-/* ====== Stock Card ====== */
+/* ====== STOCK CARD ====== */
 .stock-card {
     background: #ffffff;
     padding: 18px;
@@ -111,6 +130,53 @@ body {
 """, unsafe_allow_html=True)
 
 # ==============================
+# 📈 NIFTY DATA
+# ==============================
+nifty = yf.Ticker("^NSEI")
+data = nifty.history(period="1d")
+
+if not data.empty:
+    price = data["Close"].iloc[-1]
+    prev = data["Open"].iloc[-1]
+    change = price - prev
+    percent = (change / prev) * 100
+
+    change_class = "nifty-change-positive" if percent >= 0 else "nifty-change-negative"
+
+    st.markdown(f"""
+    <div class="nifty-card">
+        <div class="nifty-title">DAILY NIFTY 50 INSIGHTS</div>
+        <div class="nifty-value">{price:,.2f}</div>
+        <div class="{change_class}">
+            {'▲' if percent>=0 else '▼'} {percent:.2f}%
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+# ==============================
+# 📊 VALUATION SECTION
+# ==============================
+
+current_pe = 23.86
+forecast_1y = 7.33
+
+st.markdown(f"""
+<div class="valuation-card">
+    <div class="valuation-title">📊 Valuation Analysis & Forecast</div>
+    <div style="display:flex; gap:100px;">
+        <div>
+            <div class="metric-label">Current P/E</div>
+            <div class="metric-value">{current_pe}</div>
+        </div>
+        <div>
+            <div class="metric-label">1Y Median Forecast</div>
+            <div class="metric-value" style="color:#16a34a;">{forecast_1y}%</div>
+        </div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+# ==============================
 # 📊 FULL SECTOR MAP (UNCHANGED)
 # ==============================
 
@@ -133,31 +199,6 @@ SECTOR_MAP = {
     'Commodities': ['RELIANCE', 'TATASTEEL', 'JSWSTEEL', 'HINDALCO', 'NTPC', 'ONGC', 'AMBUJACEM', 'GRASIM', 'VEDL', 'COALINDIA'],
     'Services': ['LT', 'ADANIPORTS', 'APOLLOHOSP', 'HDFCLIFE', 'SBILIFE', 'TRENT', 'INDIGO', 'VBL', 'TATACOMM', 'GMRINFRA']
 }
-
-# ==============================
-# 📈 TOP NIFTY SECTION
-# ==============================
-
-nifty = yf.Ticker("^NSEI")
-data = nifty.history(period="1d")
-
-if not data.empty:
-    price = data["Close"].iloc[-1]
-    prev = data["Open"].iloc[-1]
-    change = price - prev
-    percent = (change / prev) * 100
-
-    change_class = "nifty-change-positive" if percent >= 0 else "nifty-change-negative"
-
-    st.markdown(f"""
-    <div class="nifty-card">
-        <div class="nifty-title">DAILY NIFTY 50 INSIGHTS</div>
-        <div class="nifty-value">{price:,.2f}</div>
-        <div class="{change_class}">
-            {'▲' if percent>=0 else '▼'} {percent:.2f}%
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
 
 # ==============================
 # 📊 SECTOR DISPLAY
