@@ -7,13 +7,11 @@ import io
 ## MODULE 1: CONFIGURATION & WATCHLIST
 #############################################
 
-# --- SECURE CREDENTIALS ---
 WP_USER = os.environ.get('WP_USER')
 WP_PASS = os.environ.get('WP_PASS')
 WP_URL = os.environ.get('WP_URL')
 CATEGORY_ID = 12 
 
-# --- MARKET STRUCTURE ---
 SECTOR_MAP = {
     'Nifty Bank': ['HDFCBANK', 'ICICIBANK', 'SBIN', 'AXISBANK', 'KOTAKBANK', 'INDUSINDBK', 'BANKBARODA', 'PNB', 'IDFCFIRSTB', 'FEDERALBNK'],
     'IT Services': ['TCS', 'INFY', 'HCLTECH', 'WIPRO', 'TECHM', 'LTIM', 'PERSISTENT', 'COFORGE', 'MPHASIS', 'KPITTECH'],
@@ -84,75 +82,106 @@ class MarketDataEngine:
         return results
 
 #############################################
-###### MODULE 3.1: THE SEO HERO CARD (DYNAMIC UI)
+## MODULE 3.1: THE SEO HERO CARD (DYNAMIC UI)
 #############################################
+
 class HeroCardBuilder:
     @staticmethod
     def get_market_sentiment(change):
-        """Generates punchy, irresistible SEO-optimized headlines."""
-        if change > 1.0:
-            return "Bulls on Rampage! 🚀 Nifty Shatters Resistance"
-        elif change > 0:
-            return "Green Shoot Recovery 📈 Bulls Defend Key Levels"
-        elif change < -1.0:
-            return "Blood on D-Street! 🩸 Bears Aggressive as Support Fails"
-        else:
-            return "Tug-of-War! ⚖️ Market Braces for Major Breakout"
+        if change > 1.0: return "Bulls on Rampage! 🚀 Nifty Shatters Resistance"
+        elif change > 0: return "Green Shoot Recovery 📈 Bulls Defend Key Levels"
+        elif change < -1.0: return "Blood on D-Street! 🩸 Bears Aggressive as Support Fails"
+        else: return "Tug-of-War! ⚖️ Market Braces for Major Breakout"
 
     @staticmethod
     def build_hero_card(nifty_data, change):
-        """
-        Creates the high-info Hero Card showing OHLC and Yesterday's Close.
-        nifty_data is the full yf dataframe for ^NSEI
-        """
         curr = nifty_data.iloc[-1]
         prev_close = nifty_data.iloc[-2]['Close']
-        
         sentiment_headline = HeroCardBuilder.get_market_sentiment(change)
-        
-        # UI color logic
         brand_color = "#22c55e" if change > 0 else "#ef4444"
         bg_gradient = "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)"
         
         return f"""
         <div style="background: {bg_gradient}; color: white; padding: 40px 30px; border-radius: 24px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3); margin-bottom: 40px; font-family: 'Inter', sans-serif;">
-            <div style="text-transform: uppercase; letter-spacing: 2px; font-size: 14px; font-weight: 700; color: {brand_color}; margin-bottom: 10px;">
-                {sentiment_headline}
-            </div>
-            
+            <div style="text-transform: uppercase; letter-spacing: 2px; font-size: 14px; font-weight: 700; color: {brand_color}; margin-bottom: 10px;">{sentiment_headline}</div>
             <div style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 20px;">
                 <div>
                     <span style="font-size: 18px; opacity: 0.7; display: block;">NIFTY 50 INDEX</span>
                     <span style="font-size: 64px; font-weight: 900; line-height: 1;">{curr['Close']:,.2f}</span>
                     <div style="margin-top: 10px; font-size: 24px; font-weight: 700; color: {brand_color};">
-                        {'▲' if change > 0 else '▼'} {change:+.2f}% 
-                        <span style="font-size: 16px; opacity: 0.8; font-weight: 400; color: white; margin-left: 10px;">
-                            ({curr['Close'] - prev_close:+.2f} pts)
-                        </span>
+                        {'▲' if change > 0 else '▼'} {change:+.2f}% ({curr['Close'] - prev_close:+.2f} pts)
                     </div>
                 </div>
-                
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; background: rgba(255,255,255,0.05); padding: 20px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1);">
-                    <div style="border-right: 1px solid rgba(255,255,255,0.1); padding-right: 15px;">
-                        <small style="opacity:0.6; display:block; font-size:11px; text-transform:uppercase;">Prev Close</small>
-                        <b style="font-size:16px;">{prev_close:,.2f}</b>
-                    </div>
-                    <div>
-                        <small style="opacity:0.6; display:block; font-size:11px; text-transform:uppercase;">Open</small>
-                        <b style="font-size:16px;">{curr['Open']:,.2f}</b>
-                    </div>
-                    <div style="border-right: 1px solid rgba(255,255,255,0.1); padding-right: 15px;">
-                        <small style="opacity:0.6; display:block; font-size:11px; text-transform:uppercase;">Day High</small>
-                        <b style="font-size:16px; color: #4ade80;">{curr['High']:,.2f}</b>
-                    </div>
-                    <div>
-                        <small style="opacity:0.6; display:block; font-size:11px; text-transform:uppercase;">Day Low</small>
-                        <b style="font-size:16px; color: #f87171;">{curr['Low']:,.2f}</b>
-                    </div>
+                    <div><small style="opacity:0.6; display:block; font-size:11px; text-transform:uppercase;">Prev Close</small><b>{prev_close:,.2f}</b></div>
+                    <div><small style="opacity:0.6; display:block; font-size:11px; text-transform:uppercase;">Open</small><b>{curr['Open']:,.2f}</b></div>
+                    <div><small style="opacity:0.6; display:block; font-size:11px; text-transform:uppercase;">Day High</small><b style="color: #4ade80;">{curr['High']:,.2f}</b></div>
+                    <div><small style="opacity:0.6; display:block; font-size:11px; text-transform:uppercase;">Day Low</small><b style="color: #f87171;">{curr['Low']:,.2f}</b></div>
                 </div>
             </div>
         </div>
         """
+
+#############################################
+## MODULE 3: REPORT BUILDER (THE MISSING CLASS)
+#############################################
+
+class ReportBuilder:
+    @staticmethod
+    def get_seo_tags(change):
+        return {
+            'aioseo_title': f"Market Wrap {datetime.now().strftime('%d %b')}: Nifty {change:+.2f}%",
+            'aioseo_description': f"Nifty ends at {change:+.2f}%. Full NSE analysis with RSI technicals and valuation forecasts."
+        }
+
+    @staticmethod
+    def build_html_content(stock_data, idx_returns, val_data, nifty_info):
+        summary, pe, forecast, v_table = val_data
+        n_price, n_change = nifty_info
+        
+        perf_map = {INDEX_TICKERS[k]: v for k, v in idx_returns.items() if k in INDEX_TICKERS}
+        sorted_sectors = sorted(perf_map.items(), key=lambda x: x[1], reverse=True)
+
+        html = f"""
+        <style>
+            .market-card {{ font-family: 'Inter', sans-serif; max-width: 950px; margin: auto; }}
+            .sector-block {{ background: white; border: 1px solid #e2e8f0; border-radius: 20px; padding: 25px; margin-bottom: 25px; }}
+            .stock-grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; margin-top: 20px; }}
+            .stock-card {{ border: 1px solid #f1f5f9; padding: 12px; border-radius: 10px; font-size: 13px; }}
+            a {{ text-decoration: none; color: #3b82f6; font-weight: 700; }}
+            .tag {{ font-size: 10px; padding: 2px 5px; border-radius: 4px; font-weight: bold; text-transform: uppercase; }}
+        </style>
+        <div style="background:#f8fafc; padding:30px; border-radius:20px; border:1px solid #e2e8f0; margin-bottom:30px;">
+            <h3>📊 Valuation Snapshot</h3>
+            <div style="display:flex; gap:40px; margin:25px 0;">
+                <div><small>CURRENT PE</small><br><b>{pe}</b></div>
+                <div><small>1Y FORECAST</small><br><b>{forecast}</b></div>
+            </div>
+            <p>{summary}</p>
+            {v_table}
+        </div>
+        """
+        for sector, s_ret in sorted_sectors:
+            if sector not in SECTOR_MAP: continue
+            html += f"""<div class="sector-block">
+                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #f1f5f9; padding-bottom:10px;">
+                    <h3 style="margin:0;">{sector}</h3>
+                    <b style="color:{'#16a34a' if s_ret > 0 else '#dc2626'}">{s_ret:+.2f}%</b>
+                </div>
+                <div class="stock-grid">"""
+            for t in SECTOR_MAP[sector]:
+                s = stock_data.get(t, {'price':0, 'change':0, 'rsi':50, 'vol_ratio':1})
+                ext_url = f"https://www.google.com/finance/quote/{t}:NSE"
+                rsi_tag = '<span class="tag" style="background:#fee2e2; color:#ef4444;">Overbought</span>' if s['rsi'] > 70 else ''
+                html += f"""
+                <div class="stock-card">
+                    <b>{t}</b><br>
+                    <a href="{ext_url}" target="_blank">₹{s['price']:,.2f}</a><br>
+                    <span style="color:{'#16a34a' if s['change']>0 else '#dc2626'}">{s['change']:+.2f}%</span><br>
+                    <span style="font-size:11px; color:#64748b;">Vol: {s['vol_ratio']:.2f}x</span><br>{rsi_tag}
+                </div>"""
+            html += "</div></div>"
+        return html
 
 #############################################
 ## MODULE 4: WORDPRESS PUBLISHER
@@ -163,10 +192,7 @@ class WordPressPublisher:
     def push_post(title, content, seo_data):
         auth = base64.b64encode(f"{WP_USER}:{WP_PASS}".encode()).decode()
         headers = {'Authorization': f'Basic {auth}', 'Content-Type': 'application/json'}
-        payload = {
-            'title': title, 'content': content, 'status': 'publish', 'categories': [CATEGORY_ID],
-            **seo_data
-        }
+        payload = {'title': title, 'content': content, 'status': 'publish', 'categories': [CATEGORY_ID], **seo_data}
         res = requests.post(WP_URL, headers=headers, json=payload)
         return res.status_code == 201
 
@@ -175,70 +201,30 @@ class WordPressPublisher:
 #############################################
 
 def main():
-    """
-    Main execution flow for the India Market Bot.
-    Coordinates Data Extraction -> UI Generation -> Publication.
-    """
     print(f"🚀 Starting Market Wrap execution for {datetime.now().strftime('%Y-%m-%d')}...")
-
-    # 1. INITIALIZE ALL MODULE ENGINES
     data_engine = MarketDataEngine()
     hero_builder = HeroCardBuilder()
     report_builder = ReportBuilder()
     publisher = WordPressPublisher()
     
-    # 2. FETCH NIFTY 50 OHLC (For the Irresistible Hero Card)
-    # We fetch 5 days to ensure we have enough data for today vs yesterday comparison
-    print("📥 Fetching Nifty 50 OHLC and technicals...")
     nifty_raw = yf.download('^NSEI', period='5d', interval='1d', auto_adjust=True)
-    if nifty_raw.empty:
-        print("❌ Error: Could not fetch Nifty data. Aborting.")
-        return
-
-    nifty_close_today = nifty_raw['Close'].iloc[-1]
-    nifty_close_prev = nifty_raw['Close'].iloc[-2]
-    nifty_change_pct = ((nifty_close_today / nifty_close_prev) - 1) * 100
+    if nifty_raw.empty: return
+    nifty_change_pct = ((nifty_raw['Close'].iloc[-1] / nifty_raw['Close'].iloc[-2]) - 1) * 100
     
-    # 3. FETCH SECTORAL DATA (For Top Gainers Sorting)
-    print("📥 Analyzing sectoral performance...")
     idx_raw = yf.download(list(INDEX_TICKERS.keys()), period='5d')['Close'].dropna(axis=1)
     idx_returns = ((idx_raw.iloc[-1] / idx_raw.iloc[-2] - 1) * 100).dropna()
     
-    # 4. FETCH 170+ STOCK WATCHLIST & VALUATIONS
-    print("📥 Fetching watchlist technicals and valuation metrics...")
     stock_stats = data_engine.get_bulk_stock_stats()
-    val_metrics = data_engine.get_valuation_metrics() # Returns: (summary, pe, forecast, table)
+    val_metrics = data_engine.get_valuation_metrics()
     
-    # 5. ASSEMBLE THE HTML REPORT
-    print("🎨 Building the UI components...")
-    # Generate the Hero Dashboard
     hero_html = hero_builder.build_hero_card(nifty_raw, nifty_change_pct)
+    body_html = report_builder.build_html_content(stock_stats, idx_returns, val_metrics, (nifty_raw['Close'].iloc[-1], nifty_change_pct))
     
-    # Generate the Body (Valuation Analytics + Sorted Sector Grids)
-    body_html = report_builder.build_html_content(
-        stock_stats, 
-        idx_returns, 
-        val_metrics, 
-        (nifty_close_today, nifty_change_pct)
-    )
-    
-    # Merge Components
-    final_post_html = hero_html + body_html
-    
-    # 6. CONFIGURE SEO METADATA (AIOSEO)
-    print("🔍 Optimizing for SEO...")
     seo_payload = report_builder.get_seo_tags(nifty_change_pct)
+    post_title = f"India Market Wrap {datetime.now().strftime('%d %b %Y')}: Nifty {nifty_change_pct:+.2f}%"
     
-    # 7. EXECUTE PUBLICATION
-    post_date = datetime.now().strftime('%d %b %Y')
-    post_title = f"India Market Wrap {post_date}: Nifty {nifty_change_pct:+.2f}% | Sectoral Deep-Dive"
-    
-    print(f"📤 Uploading to WordPress: {post_title}...")
-    if publisher.push_post(post_title, final_post_html, seo_payload):
-        print(f"✅ SUCCESS: Post is live at {WP_URL}")
-    else:
-        print("❌ FAILURE: Could not publish post. Check API credentials or Category ID.")
+    if publisher.push_post(post_title, hero_html + body_html, seo_payload):
+        print(f"✅ Success: {post_title}")
 
-# --- THE TRIGGER ---
 if __name__ == "__main__":
     main()
