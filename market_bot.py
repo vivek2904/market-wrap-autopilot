@@ -32,7 +32,6 @@ SECTOR_MAP = {
     'Services': ['LT', 'ADANIPORTS', 'APOLLOHOSP', 'HDFCLIFE', 'SBILIFE', 'TRENT', 'INDIGO', 'VBL', 'TATACOMM', 'GMRINFRA']
 }
 
-# Tickers updated for better stability
 INDEX_TICKERS = {'^NSEI': 'NIFTY 50', '^NSEBANK': 'Nifty Bank', '^CNXIT': 'IT Services', '^CNXAUTO': 'Automobile', '^CNXFMCG': 'FMCG', '^CNXMETAL': 'Metals', '^CNXPHARMA': 'Pharma', '^CNXENERGY': 'Energy', '^CNXREALTY': 'Realty', '^CNXINFRA': 'Infrastructure', '^CNXFIN': 'Financial Services', '^CNXPSUBANK': 'PSU Bank', '^CNXMEDIA': 'Media', '^CNXCONSUMP': 'Consumption', '^CNXPSE': 'PSE', '^CNXCPSE': 'CPSE', '^CNXCOMMOD': 'Commodities', '^CNXSERVICE': 'Services'}
 
 def get_links(ticker):
@@ -47,24 +46,17 @@ def get_valuation_and_summary():
         soup = BeautifulSoup(response.text, 'html.parser')
         paragraphs = soup.find_all('p', limit=3)
         summary_text = " ".join([p.get_text() for p in paragraphs if len(p.get_text()) > 50])
-
         tables = pd.read_html(io.StringIO(response.text))
-        current_pe, return_val, metrics_table_html = "N/A", "N/A", ""
-
+        current_pe, return_val, metrics_html = "N/A", "N/A", ""
         for df in tables:
             pe_col = [c for c in df.columns if "vs" in str(c)]
             if pe_col and current_pe == "N/A":
-                # Cleaning the PE from quotes and extra characters
-                raw_pe = str(pe_col[0]).split("vs")[-1].strip()
-                current_pe = raw_pe.replace("'", "").replace(")", "").replace("(", "").strip()
-            
+                current_pe = str(pe_col[0]).split("vs")[-1].strip().translate({ord(i): None for i in "()'"})
             if 'Period' in df.columns and any('Average P/E' in col for col in df.columns):
-                metrics_table_html = df[['Period', 'Average P/E (μ)', 'Std Dev (σ)', 'vs Current P/E']].head(5).to_html(index=False, border=0, classes='valuation-table')
-            
+                metrics_html = df[['Period', 'Average P/E (μ)', 'Std Dev (σ)', 'vs Current P/E']].head(5).to_html(index=False, border=0, classes='valuation-table')
             if not df.empty and '1 Years' in str(df.iloc[:, 0].values):
                 return_val = f"{df.iloc[0, 6]}%"
-
-        return summary_text, current_pe, return_val, metrics_table_html
+        return summary_text, current_pe, return_val, metrics_html
     except:
         return "Market valuation metrics provide context for current market levels.", "Analyzing...", "N/A", ""
 
@@ -74,99 +66,87 @@ def fetch_analysis_data():
     results = {}
     for t in all_tickers:
         try:
-            prices = data['Close'][t].dropna()
+            subset = data.iloc[:, data.columns.get_level_values(1)==t]
+            subset.columns = subset.columns.get_level_values(0)
+            prices = subset['Close'].dropna()
+            volume = subset['Volume'].dropna()
             if len(prices) < 20: continue
             curr, prev = prices.iloc[-1], prices.iloc[-2]
+            avg_vol = volume.iloc[-21:-1].mean()
+            vol_score = volume.iloc[-1] / avg_vol if avg_vol > 0 else 1
             results[t.replace(".NS", "")] = {
                 'price': curr, 'change': ((curr/prev)-1)*100, 
                 'rsi': ta.rsi(prices, length=14).iloc[-1], 
-                'trend': "UP" if curr > prices.rolling(window=20).mean().iloc[-1] else "DOWN"
+                'trend': "UP" if curr > prices.rolling(window=20).mean().iloc[-1] else "DOWN",
+                'vol_spike': vol_score
             }
         except: continue
     return results
 
 def build_report():
-    # Fetch Index Data
     idx_data = yf.download(list(INDEX_TICKERS.keys()), period='5d')['Close'].dropna(axis=1)
-    # Calculate returns and drop any NaN values to fix the screenshot error
     idx_returns = ((idx_data.iloc[-1] / idx_data.iloc[-2] - 1) * 100).dropna()
-    
-    nifty_price = idx_data.iloc[-1].get('^NSEI', 0)
-    nifty_change = idx_returns.get('^NSEI', 0)
-    
+    nifty_price, nifty_change = idx_data.iloc[-1].get('^NSEI', 0), idx_returns.get('^NSEI', 0)
     stock_analysis = fetch_analysis_data()
     summary, pe, target_return, v_table = get_valuation_and_summary()
 
-    # GROWTH MARKET LABEL LOGIC
     try: pe_float = float(pe)
-    except: pe_float = 23.0
+    except: pe_float = 23.5
     val_status = "🚀 High Growth Premium" if pe_float > 25 else "⚖️ Growth Value" if pe_float > 21 else "💎 Massive Opportunity"
 
     html = f"""
     <style>
-        .market-card {{ font-family: 'Inter', -apple-system, sans-serif; max-width: 950px; margin: auto; color: #1e293b; line-height: 1.6; }}
+        .market-card {{ font-family: 'Inter', sans-serif; max-width: 950px; margin: auto; color: #1e293b; line-height: 1.6; }}
         .header-box {{ background: #0f172a; color: white; padding: 50px 25px; border-radius: 24px; text-align: center; margin-bottom: 30px; }}
         .insight-box {{ background: #f8fafc; border: 1px solid #e2e8f0; padding: 30px; border-radius: 20px; margin-bottom: 30px; }}
-        .valuation-table {{ width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }}
-        .valuation-table th {{ background: #f1f5f9; text-align: left; padding: 12px; border-bottom: 2px solid #e2e8f0; }}
         .sector-block {{ background: white; border: 1px solid #e2e8f0; border-radius: 20px; padding: 25px; margin-bottom: 25px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }}
         .stock-grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; margin-top: 20px; }}
         .stock-card {{ border: 1px solid #f1f5f9; padding: 12px; border-radius: 10px; font-size: 13px; background: #fff; }}
         .tag {{ font-size: 10px; padding: 2px 5px; border-radius: 4px; font-weight: bold; text-transform: uppercase; margin-right: 4px; }}
-        a {{ text-decoration: none; color: #3b82f6; font-weight: 600; }}
+        a {{ text-decoration: none; color: #3b82f6; font-weight: 700; }}
     </style>
-
     <div class="market-card">
         <div class="header-box">
-            <span style="opacity: 0.7; letter-spacing: 2px; font-weight: 600;">DAILY NIFTY 50 INSIGHTS</span>
             <span style="font-size: 64px; font-weight: 800; display: block;">{nifty_price:,.2f}</span>
             <div style="font-size: 24px; color: {'#4ade80' if nifty_change > 0 else '#f87171'}; font-weight: 700;">
                 {'▲' if nifty_change > 0 else '▼'} {nifty_change:.2f}% ({val_status})
             </div>
         </div>
-
         <div class="insight-box">
-            <h2 style="margin-top:0; color:#0f172a;">📊 Valuation Analysis & Forecast</h2>
-            <p style="font-size:17px;">{summary}</p>
+            <h2 style="margin-top:0;">📊 Valuation Analysis & Forecast</h2>
             <div style="display:flex; gap:40px; margin: 25px 0; background: white; padding: 20px; border-radius: 15px;">
-                <div><small style="color:#64748b; font-weight:700;">CURRENT P/E</small><br><b style="font-size:28px;">{pe}</b></div>
-                <div><small style="color:#64748b; font-weight:700;">1Y MEDIAN FORECAST</small><br><b style="font-size:28px; color:#22c55e;">{target_return}</b></div>
+                <div><small>CURRENT P/E</small><br><b style="font-size:28px;">{pe}</b></div>
+                <div><small>1Y MEDIAN FORECAST</small><br><b style="font-size:28px; color:#22c55e;">{target_return}</b></div>
             </div>
+            <p>{summary}</p>
             {v_table}
         </div>
-
-        <h2 style="border-left: 8px solid #3b82f6; padding-left: 15px; margin: 50px 0 25px; font-size: 28px;">🏗️ Sectoral Performance (Top Gainers First)</h2>
     """
 
-    # SORTING SECTORS: Descending order of performance
-    # Filter only tickers that exist in idx_returns and map to SECTOR_MAP names
     performance_map = {INDEX_TICKERS[k]: v for k, v in idx_returns.items() if k in INDEX_TICKERS}
     sorted_sectors = sorted(performance_map.items(), key=lambda item: item[1], reverse=True)
 
     for sector_name, s_return in sorted_sectors:
         if sector_name not in SECTOR_MAP: continue
-        tickers = SECTOR_MAP[sector_name]
-        
         html += f"""
         <div class="sector-block">
             <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px;">
-                <h3 style="margin:0; font-size:22px;">{sector_name}</h3>
-                <b style="font-size:20px; color: {'#16a34a' if s_return > 0 else '#dc2626'};">
-                    {'+' if s_return > 0 else ''}{s_return:.2f}%
-                </b>
+                <h3 style="margin:0;">{sector_name}</h3>
+                <b style="color: {'#16a34a' if s_return > 0 else '#dc2626'};">{s_return:+.2f}%</b>
             </div>
             <div class="stock-grid">"""
-        for t in tickers:
-            s = stock_analysis.get(t, {'price': 0, 'change': 0, 'rsi': 50, 'trend': 'SIDE'})
+        for t in SECTOR_MAP[sector_name]:
+            s = stock_analysis.get(t, {'price': 0, 'change': 0, 'rsi': 50, 'vol_spike': 1})
             ext, int_link = get_links(t)
             rsi_tag = '<span class="tag" style="background:#fee2e2; color:#ef4444;">Overbought</span>' if s['rsi'] > 70 else \
                       ('<span class="tag" style="background:#dcfce7; color:#22c55e;">Oversold</span>' if s['rsi'] < 30 else '')
+            vol_tag = '<span class="tag" style="background:#fef3c7; color:#d97706;">🔥 Volume Spike</span>' if s['vol_spike'] > 2.5 else ''
             html += f"""
                 <div class="stock-card">
                     <div style="font-weight:700;"><a href="{int_link}">{t}</a></div>
-                    <div style="font-size:16px; font-weight:800; margin-bottom:4px;"><a href="{ext}" target="_blank" style="color:#1e293b;">₹{s['price']:,.2f}</a></div>
-                    <div style="font-weight:700; color:{'#16a34a' if s['change'] > 0 else '#dc2626'};">{'+' if s['change'] > 0 else ''}{s['change']:.2f}%</div>
-                    <div style="margin-top:10px;">{rsi_tag}</div>
+                    <div style="font-size:16px; font-weight:800; margin-bottom:4px;"><a href="{ext}" target="_blank">₹{s['price']:,.2f}</a></div>
+                    <div style="font-weight:700; color:{'#16a34a' if s['change'] > 0 else '#dc2626'};">{s['change']:+.2f}%</div>
+                    <div style="margin-top:10px;">{rsi_tag}{vol_tag}</div>
                 </div>"""
         html += "</div></div>"
     html += "</div>"
@@ -174,12 +154,21 @@ def build_report():
 
 def post():
     content, change = build_report()
-    if content:
-        auth = base64.b64encode(f"{WP_USER}:{WP_PASS}".encode()).decode()
-        headers = {'Authorization': f'Basic {auth}', 'Content-Type': 'application/json'}
-        payload = {'title': f"Market Wrap {datetime.now().strftime('%d %b')}: Nifty {change:.2f}% | Top Performing Sectors", 'content': content, 'status': 'publish', 'categories': [CATEGORY_ID]}
-        res = requests.post(WP_URL, headers=headers, json=payload)
-        print(f"✅ Success: {payload['title']}" if res.status_code == 201 else f"❌ Error: {res.text}")
+    if not content: return
+    auth = base64.b64encode(f"{WP_USER}:{WP_PASS}".encode()).decode()
+    headers = {'Authorization': f'Basic {auth}', 'Content-Type': 'application/json'}
+    
+    # CLICK-RATE ENHANCEMENT: SEO Title & Description
+    post_title = f"Market Wrap {datetime.now().strftime('%d %b')}: Nifty {change:+.2f}% | Top Performing Sectors"
+    seo_desc = f"Today's Nifty Review: Index ends at {change:+.2f}%. Full 170+ stock analysis, volume shockers, and historical P/E valuation for the Indian market."
+    
+    payload = {
+        'title': post_title, 'content': content, 'status': 'publish', 'categories': [CATEGORY_ID],
+        'aioseo_title': "#post_title #separator_sa #site_title",
+        'aioseo_description': seo_desc
+    }
+    res = requests.post(WP_URL, headers=headers, json=payload)
+    print(f"✅ Success: {post_title}" if res.status_code == 201 else f"❌ Error: {res.text}")
 
 if __name__ == "__main__":
     post()
