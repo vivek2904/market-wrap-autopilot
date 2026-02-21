@@ -83,78 +83,73 @@ class MarketDataEngine:
             except: continue
         return results
 
+#############################################
+###### MODULE 3.1: THE SEO HERO CARD (DYNAMIC UI)
+#############################################
 class HeroCardBuilder:
     @staticmethod
     def get_market_sentiment(change):
-        """Generates punchy, irresistible SEO-optimized headlines based on daily move."""
-        if change > 1.2:
+        """Generates punchy, irresistible SEO-optimized headlines."""
+        if change > 1.0:
             return "Bulls on Rampage! 🚀 Nifty Shatters Resistance"
-        elif change > 0.3:
+        elif change > 0:
             return "Green Shoot Recovery 📈 Bulls Defend Key Levels"
-        elif change >= -0.3 and change <= 0.3:
-            return "Tug-of-War! ⚖️ Market Braces for Major Breakout"
-        elif change < -1.2:
+        elif change < -1.0:
             return "Blood on D-Street! 🩸 Bears Aggressive as Support Fails"
         else:
-            return "Bears in Control 🔻 Sellers Dominate the Session"
+            return "Tug-of-War! ⚖️ Market Braces for Major Breakout"
 
     @staticmethod
-    def build_hero_card(nifty_df, change):
+    def build_hero_card(nifty_data, change):
         """
-        Creates a high-contrast Hero Card with OHLC and Sentiment.
-        nifty_df: The yfinance dataframe for ^NSEI (Nifty 50)
+        Creates the high-info Hero Card showing OHLC and Yesterday's Close.
+        nifty_data is the full yf dataframe for ^NSEI
         """
-        # Get the last two days of data
-        today = nifty_df.iloc[-1]
-        yesterday = nifty_df.iloc[-2]
+        curr = nifty_data.iloc[-1]
+        prev_close = nifty_data.iloc[-2]['Close']
         
-        points_change = today['Close'] - yesterday['Close']
         sentiment_headline = HeroCardBuilder.get_market_sentiment(change)
         
-        # Color logic for UI
+        # UI color logic
         brand_color = "#22c55e" if change > 0 else "#ef4444"
         bg_gradient = "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)"
         
         return f"""
         <div style="background: {bg_gradient}; color: white; padding: 40px 30px; border-radius: 24px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3); margin-bottom: 40px; font-family: 'Inter', sans-serif;">
-            
-            <div style="text-transform: uppercase; letter-spacing: 2px; font-size: 13px; font-weight: 800; color: {brand_color}; margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">
+            <div style="text-transform: uppercase; letter-spacing: 2px; font-size: 14px; font-weight: 700; color: {brand_color}; margin-bottom: 10px;">
                 {sentiment_headline}
             </div>
             
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 30px;">
-                
-                <div style="flex: 1; min-width: 250px;">
-                    <span style="font-size: 16px; opacity: 0.6; font-weight: 600; display: block; margin-bottom: 5px;">NIFTY 50 INDEX</span>
-                    <span style="font-size: 68px; font-weight: 900; line-height: 0.9; letter-spacing: -2px;">{today['Close']:,.2f}</span>
-                    
-                    <div style="margin-top: 15px; font-size: 26px; font-weight: 700; color: {brand_color};">
-                        {'▲' if change > 0 else '▼'} {abs(change):.2f}% 
-                        <span style="font-size: 16px; opacity: 0.8; font-weight: 500; color: white; margin-left: 12px; background: rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 8px;">
-                            {points_change:+.2f} pts
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 20px;">
+                <div>
+                    <span style="font-size: 18px; opacity: 0.7; display: block;">NIFTY 50 INDEX</span>
+                    <span style="font-size: 64px; font-weight: 900; line-height: 1;">{curr['Close']:,.2f}</span>
+                    <div style="margin-top: 10px; font-size: 24px; font-weight: 700; color: {brand_color};">
+                        {'▲' if change > 0 else '▼'} {change:+.2f}% 
+                        <span style="font-size: 16px; opacity: 0.8; font-weight: 400; color: white; margin-left: 10px;">
+                            ({curr['Close'] - prev_close:+.2f} pts)
                         </span>
                     </div>
                 </div>
                 
-                <div style="flex: 1; min-width: 280px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; background: rgba(255,255,255,0.03); padding: 25px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1);">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; background: rgba(255,255,255,0.05); padding: 20px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1);">
                     <div style="border-right: 1px solid rgba(255,255,255,0.1); padding-right: 15px;">
-                        <small style="opacity:0.5; display:block; font-size:10px; text-transform:uppercase; margin-bottom:4px;">Prev Close</small>
-                        <b style="font-size:17px; color: #94a3b8;">{yesterday['Close']:,.2f}</b>
+                        <small style="opacity:0.6; display:block; font-size:11px; text-transform:uppercase;">Prev Close</small>
+                        <b style="font-size:16px;">{prev_close:,.2f}</b>
                     </div>
-                    <div style="padding-left: 5px;">
-                        <small style="opacity:0.5; display:block; font-size:10px; text-transform:uppercase; margin-bottom:4px;">Open Price</small>
-                        <b style="font-size:17px;">{today['Open']:,.2f}</b>
+                    <div>
+                        <small style="opacity:0.6; display:block; font-size:11px; text-transform:uppercase;">Open</small>
+                        <b style="font-size:16px;">{curr['Open']:,.2f}</b>
                     </div>
-                    <div style="border-right: 1px solid rgba(255,255,255,0.1); padding-right: 15px; margin-top: 10px;">
-                        <small style="opacity:0.5; display:block; font-size:10px; text-transform:uppercase; margin-bottom:4px;">Day High</small>
-                        <b style="font-size:17px; color: #4ade80;">{today['High']:,.2f}</b>
+                    <div style="border-right: 1px solid rgba(255,255,255,0.1); padding-right: 15px;">
+                        <small style="opacity:0.6; display:block; font-size:11px; text-transform:uppercase;">Day High</small>
+                        <b style="font-size:16px; color: #4ade80;">{curr['High']:,.2f}</b>
                     </div>
-                    <div style="padding-left: 5px; margin-top: 10px;">
-                        <small style="opacity:0.5; display:block; font-size:10px; text-transform:uppercase; margin-bottom:4px;">Day Low</small>
-                        <b style="font-size:17px; color: #f87171;">{today['Low']:,.2f}</b>
+                    <div>
+                        <small style="opacity:0.6; display:block; font-size:11px; text-transform:uppercase;">Day Low</small>
+                        <b style="font-size:16px; color: #f87171;">{curr['Low']:,.2f}</b>
                     </div>
                 </div>
-                
             </div>
         </div>
         """
@@ -175,53 +170,75 @@ class WordPressPublisher:
         res = requests.post(WP_URL, headers=headers, json=payload)
         return res.status_code == 201
 
+#############################################
+## MODULE 5: MAIN EXECUTION FLOW
+#############################################
+
 def main():
-    # 1. Initialize Engines
+    """
+    Main execution flow for the India Market Bot.
+    Coordinates Data Extraction -> UI Generation -> Publication.
+    """
+    print(f"🚀 Starting Market Wrap execution for {datetime.now().strftime('%Y-%m-%d')}...")
+
+    # 1. INITIALIZE ALL MODULE ENGINES
     data_engine = MarketDataEngine()
-    report_builder = ReportBuilder()
     hero_builder = HeroCardBuilder()
+    report_builder = ReportBuilder()
     publisher = WordPressPublisher()
     
-    # 2. Fetch Market Data
-    # Fetch Nifty 50 OHLC for Hero Card
+    # 2. FETCH NIFTY 50 OHLC (For the Irresistible Hero Card)
+    # We fetch 5 days to ensure we have enough data for today vs yesterday comparison
+    print("📥 Fetching Nifty 50 OHLC and technicals...")
     nifty_raw = yf.download('^NSEI', period='5d', interval='1d', auto_adjust=True)
-    nifty_change = ((nifty_raw['Close'].iloc[-1] / nifty_raw['Close'].iloc[-2]) - 1) * 100
+    if nifty_raw.empty:
+        print("❌ Error: Could not fetch Nifty data. Aborting.")
+        return
+
+    nifty_close_today = nifty_raw['Close'].iloc[-1]
+    nifty_close_prev = nifty_raw['Close'].iloc[-2]
+    nifty_change_pct = ((nifty_close_today / nifty_close_prev) - 1) * 100
     
-    # Fetch Sector Returns for Sorting
+    # 3. FETCH SECTORAL DATA (For Top Gainers Sorting)
+    print("📥 Analyzing sectoral performance...")
     idx_raw = yf.download(list(INDEX_TICKERS.keys()), period='5d')['Close'].dropna(axis=1)
     idx_returns = ((idx_raw.iloc[-1] / idx_raw.iloc[-2] - 1) * 100).dropna()
     
-    # Fetch Watchlist Technicals & Valuation Scrape
+    # 4. FETCH 170+ STOCK WATCHLIST & VALUATIONS
+    print("📥 Fetching watchlist technicals and valuation metrics...")
     stock_stats = data_engine.get_bulk_stock_stats()
-    val_metrics = data_engine.get_valuation_metrics() # (summary, pe, forecast, table)
+    val_metrics = data_engine.get_valuation_metrics() # Returns: (summary, pe, forecast, table)
     
-    # 3. Assemble the Report Components
-    # Build the Hero Card first
-    hero_html = hero_builder.build_hero_card(nifty_raw, nifty_change)
+    # 5. ASSEMBLE THE HTML REPORT
+    print("🎨 Building the UI components...")
+    # Generate the Hero Dashboard
+    hero_html = hero_builder.build_hero_card(nifty_raw, nifty_change_pct)
     
-    # Build the rest of the body (Valuation + Sector Grids)
-    # Pass (nifty_price, nifty_change) as a tuple
+    # Generate the Body (Valuation Analytics + Sorted Sector Grids)
     body_html = report_builder.build_html_content(
         stock_stats, 
         idx_returns, 
         val_metrics, 
-        (nifty_raw['Close'].iloc[-1], nifty_change)
+        (nifty_close_today, nifty_change_pct)
     )
     
-    # Final Full Content (Hero + Body)
-    full_html = hero_html + body_html
+    # Merge Components
+    final_post_html = hero_html + body_html
     
-    # 4. SEO Payload
-    seo_tags = report_builder.get_seo_tags(nifty_change)
+    # 6. CONFIGURE SEO METADATA (AIOSEO)
+    print("🔍 Optimizing for SEO...")
+    seo_payload = report_builder.get_seo_tags(nifty_change_pct)
     
-    # 5. Execute Posting
-    post_date = datetime.now().strftime('%d %b')
-    post_title = f"India Market Wrap {post_date}: Nifty {nifty_change:+.2f}% | Sectoral Performance"
+    # 7. EXECUTE PUBLICATION
+    post_date = datetime.now().strftime('%d %b %Y')
+    post_title = f"India Market Wrap {post_date}: Nifty {nifty_change_pct:+.2f}% | Sectoral Deep-Dive"
     
-    if publisher.push_post(post_title, full_html, seo_tags):
-        print(f"✅ Mission Accomplished! Post Live: {post_title}")
+    print(f"📤 Uploading to WordPress: {post_title}...")
+    if publisher.push_post(post_title, final_post_html, seo_payload):
+        print(f"✅ SUCCESS: Post is live at {WP_URL}")
     else:
-        print("❌ Posting Failed. Check API credentials or network.")
+        print("❌ FAILURE: Could not publish post. Check API credentials or Category ID.")
 
+# --- THE TRIGGER ---
 if __name__ == "__main__":
     main()
