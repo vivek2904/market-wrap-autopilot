@@ -106,6 +106,7 @@ class MarketDataEngine:
 #############################################
 ## MODULE 3.1: THE SEO HERO CARD (DYNAMIC UI)
 #############################################
+
 class HeroCardBuilder:
     @staticmethod
     def get_market_sentiment(change):
@@ -178,7 +179,8 @@ class HeroCardBuilder:
 #############################################
 ###MODULE 3.2: THE HEAT-MAPPED WATCHLIST
 #############################################
-  class ReportBuilder:
+  
+class ReportBuilder:
     @staticmethod
     def get_seo_tags(change):
         return {
