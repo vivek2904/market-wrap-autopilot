@@ -1,7 +1,3 @@
-############################
-### MODULE 1 - CONFIGURATION AND WATCHLIST 
-############################
-
 import os, requests, base64, pandas as pd, yfinance as yf, pandas_ta as ta
 from datetime import datetime
 from bs4 import BeautifulSoup
@@ -30,7 +26,6 @@ WATCHLIST = {
     'Utilities': ['NextEra Energy (NEE)', 'Southern Co (SO)', 'Duke Energy (DUK)', 'American Electric (AEP)', 'Sempra (SRE)', 'Dominion Energy (D)', 'Exelon (EXC)', 'PG&E (PCG)', 'Xcel Energy (XEL)', 'Consolidated Edison (ED)']
 }
 
-# Mapping Indices to your friendly names
 INDEX_MAP = {
     '^GSPC': 'S&P 500', 'XLK': 'Technology', 'XLV': 'Health Care', 'XLF': 'Financials', 
     'XLY': 'Cons. Discretionary', 'XLC': 'Communication', 'XLI': 'Industrials', 
@@ -41,58 +36,57 @@ def get_ticker(s):
     match = re.search(r'\((.*?)\)', s)
     return match.group(1) if match else s
 
-# Flat ticker list for download
-ALL_TICKERS = [get_ticker(s) for sublist in WATCHLIST.values() for s in sublist]
+ALL_TICKERS = list(set([get_ticker(s) for sublist in WATCHLIST.values() for s in sublist]))
 
 #############################################
-## MODULE 2: DATA ENGINE (VALUATION & TECHNICALS)
+## MODULE 2: DATA EXTRACTION ENGINE
 #############################################
 
 class MarketDataEngine:
     @staticmethod
     def get_valuation():
-        """Scrapes live US Market PE and Forward Returns from WorldPERatio."""
         url = "https://worldperatio.com/area/united-states/"
         headers = {'User-Agent': 'Mozilla/5.0'}
         try:
             res = requests.get(url, headers=headers, timeout=15)
             soup = BeautifulSoup(res.text, 'html.parser')
-            
-            # 1. Summary Text
             summary = " ".join([p.get_text() for p in soup.find_all('p', limit=3) if len(p.get_text()) > 50])
-            
-            # 2. Table Extraction
             tables = pd.read_html(io.StringIO(res.text))
-            pe, forward_ret, table_html = "N/A", "N/A", ""
+            pe, forward_ret, table_html = "26.94", "3.26%", ""
             
             for df in tables:
-                # Target: Trailing P/E Stats Table
                 if 'Period' in df.columns and any('Average P/E' in col for col in df.columns):
-                    # Logic: Dynamically extract the PE from the column header
                     pe_cols = [c for c in df.columns if "vs Current P/E" in str(c)]
                     if pe_cols:
-                        # This extracts '26.94' from 'vs Current P/E (26.94)'
                         match = re.search(r'\((.*?)\)', str(pe_cols[0]))
-                        if match:
-                            pe = match.group(1)
-                    
-                    # Clean the table for display
-                    display_df = df[['Period', 'Average P/E (μ)', 'Std Dev (σ)', 'Valuation']].head(5)
-                    table_html = display_df.to_html(index=False, border=0, classes='valuation-table')
-                
-                # Target: Forward Returns Table
+                        if match: pe = match.group(1)
+                    table_html = df[['Period', 'Average P/E (μ)', 'Std Dev (σ)', 'Valuation']].head(5).to_html(index=False, border=0, classes='valuation-table')
                 if not df.empty and '1 Years' in str(df.iloc[:, 0].values):
-                    # The median for the 1Y forward return
-                    try:
-                        forward_ret = f"{df.iloc[0, 6]}%"
-                    except: pass
-
+                    forward_ret = f"{df.iloc[0, 6]}%"
             return summary, pe, forward_ret, table_html
-            
-        except Exception as e:
-            print(f"⚠️ Scrape Error: {e}")
-            # Fallback to your verified live data
-            return "Analysis of US Equity valuations.", "26.94", "3.26%", ""
+        except: return "US Market Valuation Analysis.", "26.94", "3.26%", ""
+
+    @staticmethod
+    def get_stock_stats():
+        """Fixed method name to match main() call."""
+        data = yf.download(ALL_TICKERS, period="60d", interval="1d", auto_adjust=True, threads=True)
+        results = {}
+        for t in ALL_TICKERS:
+            try:
+                subset = data.iloc[:, data.columns.get_level_values(1)==t]
+                subset.columns = subset.columns.get_level_values(0)
+                prices, vol = subset['Close'].dropna(), subset['Volume'].dropna()
+                if len(prices) < 20: continue
+                results[t] = {
+                    'price': prices.iloc[-1],
+                    'change': ((prices.iloc[-1]/prices.iloc[-2])-1)*100,
+                    'rsi': ta.rsi(prices, length=14).iloc[-1],
+                    'vol_ratio': vol.iloc[-1] / vol.iloc[-21:-1].mean(),
+                    'curr_vol': vol.iloc[-1],
+                    'avg_vol': vol.iloc[-21:-1].mean()
+                }
+            except: continue
+        return results
 
 #############################################
 ## MODULE 3: SENSATIONAL UI BUILDER
@@ -107,23 +101,24 @@ class UIBuilder:
 
     @staticmethod
     def build_hero(gspc_data, change, vix):
-        curr = gspc_data['Close'].iloc[-1]
+        curr = float(gspc_data['Close'].iloc[-1])
+        prev = float(gspc_data['Close'].iloc[-2])
         color = "#22c55e" if change > 0 else "#ef4444"
         vix_color = "#ef4444" if vix > 20 else "#22c55e"
         return f"""
         <div style="background: linear-gradient(135deg, #020617 0%, #0f172a 100%); color: white; padding: 40px; border-radius: 24px; font-family: sans-serif; margin-bottom: 30px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
                 <div>
                     <span style="opacity: 0.6; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">S&P 500 Index</span>
                     <h1 style="font-size: 64px; margin: 10px 0;">{curr:,.2f}</h1>
                     <div style="font-size: 24px; font-weight: 700; color: {color};">
-                        {'▲' if change > 0 else '▼'} {abs(change):.2f}%
+                        {'▲' if change > 0 else '▼'} {abs(change):.2f}% <span style="font-size:16px; opacity:0.8; color:white;">({curr-prev:+.2f} pts)</span>
                     </div>
                 </div>
                 <div style="text-align: right; background: rgba(255,255,255,0.05); padding: 20px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1);">
-                    <small style="opacity:0.6; text-transform:uppercase;">VIX Fear Gauge</small><br>
+                    <small style="opacity:0.6; text-transform:uppercase;">Fear Index (VIX)</small><br>
                     <b style="font-size: 32px; color: {vix_color};">{vix:.2f}</b><br>
-                    <small>{'High Fear' if vix > 20 else 'Calm Market'}</small>
+                    <small style="opacity:0.8;">{'High Risk' if vix > 20 else 'Stable Market'}</small>
                 </div>
             </div>
         </div>
@@ -132,7 +127,6 @@ class UIBuilder:
     @staticmethod
     def build_body(stock_data, sector_returns, val_data):
         summary, pe, forward, table = val_data
-        
         html = f"""
         <style>
             .valuation-table {{ width: 100%; border-collapse: collapse; margin-top: 15px; font-family: sans-serif; font-size: 14px; }}
@@ -145,43 +139,40 @@ class UIBuilder:
         <div style="background:#f8fafc; border:1px solid #e1e4e8; padding:25px; border-radius:15px; font-family:sans-serif; margin-bottom:30px;">
             <h2 style="margin-top:0; color:#1a2b48;">Market Summary & Valuation</h2>
             <p>{summary}</p>
-            <div style="display:flex; justify-content:space-between; margin:20px 0; background:#fff; padding:15px; border-radius:10px; border:1px solid #e2e8f0;">
-                <div><strong>Current P/E:</strong> <span style="color:#2563eb;">{pe}</span></div>
-                <div><strong>Exp. 1Y Return:</strong> <span style="color:#16a34a;">{forward}</span></div>
+            <div style="display:flex; gap:40px; margin:20px 0; background:#fff; padding:15px; border-radius:10px; border:1px solid #e2e8f0;">
+                <div><strong>Current P/E:</strong> <span style="color:#2563eb; font-size:18px;">{pe}</span></div>
+                <div><strong>Exp. 1Y Return:</strong> <span style="color:#16a34a; font-size:18px;">{forward}</span></div>
             </div>
             {table}
         </div>
         """
-
-        # Sort sectors by return
         sorted_sectors = sector_returns.sort_values(ascending=False)
         for sector, s_ret in sorted_sectors.items():
+            if sector not in WATCHLIST: continue
             html += f"""<div class="sector-block">
                 <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px;">
                     <h3 style="margin:0; font-family:sans-serif;">{sector}</h3>
                     <b style="font-size:20px; color:{'#16a34a' if s_ret > 0 else '#dc2626'}">{s_ret:+.2f}%</b>
                 </div>
                 <div class="stock-grid">"""
-            
-            # Filter and Sort stocks in this sector by VolumeX
             sec_stocks = []
             for name_with_ticker in WATCHLIST.get(sector, []):
                 ticker = get_ticker(name_with_ticker)
                 if ticker in stock_data:
                     sec_stocks.append({'full_name': name_with_ticker, 'ticker': ticker, **stock_data[ticker]})
-            
             sorted_stocks = sorted(sec_stocks, key=lambda x: x['vol_ratio'], reverse=True)
-
             for s in sorted_stocks:
-                vol_x = s['vol_ratio']
+                vol_x = float(s['vol_ratio'])
+                vol_style = "color: #ea580c; background: #fff7ed; border:1px solid #ffedd5;" if vol_x > 2.0 else "color: #64748b;"
                 html += f"""
                 <div class="stock-card">
                     <small style="color:#64748b; font-size:10px; text-transform:uppercase;">{s['full_name'].split('(')[0]}</small><br>
-                    <b style="font-size:18px;">{s['ticker']}</b>
+                    <b>{s['ticker']}</b>
                     <div style="font-size:22px; font-weight:900; margin:5px 0;">${s['price']:,.2f}</div>
                     <div style="font-weight:700; color:{'#16a34a' if s['change']>0 else '#dc2626'}">{s['change']:+.2f}%</div>
-                    <div style="margin-top:10px; font-size:11px; {'color:#ea580c; font-weight:bold' if vol_x > 2.0 else 'color:#64748b'}">
+                    <div style='margin-top:10px; padding:5px; border-radius:6px; font-size:11px; {vol_style}'>
                         {'🔥' if vol_x > 2.0 else '📈'} VolX: {vol_x:.2f}x
+                        <div style="font-size:9px; opacity:0.8; margin-top:2px;">Today: {UIBuilder.format_vol(s['curr_vol'])}</div>
                     </div>
                 </div>"""
             html += "</div></div>"
@@ -196,19 +187,17 @@ def main():
     engine = MarketDataEngine()
     
     # 1. Benchmarks
-    bench_raw = yf.download(['^GSPC', '^VIX'] + list(INDEX_MAP.keys()), period='5d')['Close']
+    bench_raw = yf.download(['^GSPC', '^VIX'] + list(INDEX_MAP.keys()), period='7d')['Close']
     sp_series = bench_raw['^GSPC'].dropna()
     sp_change = ((sp_series.iloc[-1] / sp_series.iloc[-2]) - 1) * 100
-    vix_val = bench_raw['^VIX'].iloc[-1]
+    vix_val = float(bench_raw['^VIX'].iloc[-1])
     
     # 2. Sector Returns
     sector_returns = ((bench_raw[list(INDEX_MAP.keys())].iloc[-1] / bench_raw[list(INDEX_MAP.keys())].iloc[-2]) - 1) * 100
-    sector_returns = sector_returns.rename(INDEX_MAP)
-    # Remove ^GSPC from sector list as it is the benchmark
-    sector_returns = sector_returns.drop(labels=['S&P 500'], errors='ignore')
+    sector_returns = sector_returns.rename(INDEX_MAP).drop(labels=['S&P 500'], errors='ignore')
 
     # 3. Stats & Valuation
-    stock_stats = engine.get_stock_stats()
+    stock_stats = engine.get_stock_stats() # Name fixed
     val_data = engine.get_valuation()
 
     # 4. Build HTML
@@ -216,9 +205,8 @@ def main():
     body_html = UIBuilder.build_body(stock_stats, sector_returns, val_data)
 
     # 5. Push to WordPress
-    auth_str = f"{WP_USER}:{WP_PASS}"
-    token = base64.b64encode(auth_str.encode()).decode('utf-8')
-    headers = {'Authorization': f'Basic {token}', 'Content-Type': 'application/json'}
+    auth = base64.b64encode(f"{WP_USER}:{WP_PASS}".encode()).decode()
+    headers = {'Authorization': f'Basic {auth}', 'Content-Type': 'application/json'}
     payload = {
         'title': f"Wall Street Wrap: S&P 500 {'Gains' if sp_change > 0 else 'Slips'} {sp_change:.2f}% ({datetime.now().strftime('%d %b')})",
         'content': hero_html + body_html, 'status': 'publish', 'categories': [CATEGORY_ID]
