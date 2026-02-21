@@ -272,67 +272,6 @@ class ReportBuilder:
         return html
 
 #############################################
-## MODULE 3: REPORT BUILDER (THE MISSING CLASS)
-#############################################
-
-class ReportBuilder:
-    @staticmethod
-    def get_seo_tags(change):
-        return {
-            'aioseo_title': f"Market Wrap {datetime.now().strftime('%d %b')}: Nifty {change:+.2f}%",
-            'aioseo_description': f"Nifty ends at {change:+.2f}%. Full NSE analysis with RSI technicals and valuation forecasts."
-        }
-
-    @staticmethod
-    def build_html_content(stock_data, idx_returns, val_data, nifty_info):
-        summary, pe, forecast, v_table = val_data
-        n_price, n_change = nifty_info
-        
-        perf_map = {INDEX_TICKERS[k]: v for k, v in idx_returns.items() if k in INDEX_TICKERS}
-        sorted_sectors = sorted(perf_map.items(), key=lambda x: x[1], reverse=True)
-
-        html = f"""
-        <style>
-            .market-card {{ font-family: 'Inter', sans-serif; max-width: 950px; margin: auto; }}
-            .sector-block {{ background: white; border: 1px solid #e2e8f0; border-radius: 20px; padding: 25px; margin-bottom: 25px; }}
-            .stock-grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; margin-top: 20px; }}
-            .stock-card {{ border: 1px solid #f1f5f9; padding: 12px; border-radius: 10px; font-size: 13px; }}
-            a {{ text-decoration: none; color: #3b82f6; font-weight: 700; }}
-            .tag {{ font-size: 10px; padding: 2px 5px; border-radius: 4px; font-weight: bold; text-transform: uppercase; }}
-        </style>
-        <div style="background:#f8fafc; padding:30px; border-radius:20px; border:1px solid #e2e8f0; margin-bottom:30px;">
-            <h3>📊 Valuation Snapshot</h3>
-            <div style="display:flex; gap:40px; margin:25px 0;">
-                <div><small>CURRENT PE</small><br><b>{pe}</b></div>
-                <div><small>1Y FORECAST</small><br><b>{forecast}</b></div>
-            </div>
-            <p>{summary}</p>
-            {v_table}
-        </div>
-        """
-        for sector, s_ret in sorted_sectors:
-            if sector not in SECTOR_MAP: continue
-            html += f"""<div class="sector-block">
-                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #f1f5f9; padding-bottom:10px;">
-                    <h3 style="margin:0;">{sector}</h3>
-                    <b style="color:{'#16a34a' if s_ret > 0 else '#dc2626'}">{s_ret:+.2f}%</b>
-                </div>
-                <div class="stock-grid">"""
-            for t in SECTOR_MAP[sector]:
-                s = stock_data.get(t, {'price':0, 'change':0, 'rsi':50, 'vol_ratio':1})
-                ext_url = f"https://www.google.com/finance/quote/{t}:NSE"
-                rsi_tag = '<span class="tag" style="background:#fee2e2; color:#ef4444;">Overbought</span>' if s['rsi'] > 70 else ''
-                html += f"""
-                <div class="stock-card">
-                    <b>{t}</b><br>
-                    <a href="{ext_url}" target="_blank">₹{s['price']:,.2f}</a><br>
-                    <span style="color:{'#16a34a' if s['change']>0 else '#dc2626'}">{s['change']:+.2f}%</span><br>
-                    <span style="font-size:11px; color:#64748b;">Vol: {s['vol_ratio']:.2f}x</span><br>{rsi_tag}
-                </div>"""
-            html += "</div></div>"
-        return html
-
-#############################################
 ## MODULE 4: WORDPRESS PUBLISHER
 #############################################
 
