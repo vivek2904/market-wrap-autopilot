@@ -106,77 +106,156 @@ class MarketDataEngine:
 #############################################
 ## MODULE 3.1: THE SEO HERO CARD (DYNAMIC UI)
 #############################################
-
 class HeroCardBuilder:
     @staticmethod
     def get_market_sentiment(change):
-        """Generates punchy, irresistible SEO-optimized headlines."""
-        # Ensure change is a float for comparison
+        """Generates punchy, irresistible headlines based on daily move."""
         val = float(change)
-        if val > 1.0: return "Bulls on Rampage! 🚀 Nifty Shatters Resistance"
-        elif val > 0: return "Green Shoot Recovery 📈 Bulls Defend Key Levels"
-        elif val < -1.0: return "Blood on D-Street! 🩸 Bears Aggressive as Support Fails"
-        else: return "Tug-of-War! ⚖️ Market Braces for Major Breakout"
+        if val > 1.2: return "Bulls on Rampage! 🚀 Nifty Shatters Resistance"
+        elif val > 0.3: return "Green Shoot Recovery 📈 Bulls Defend Key Levels"
+        elif val < -1.2: return "Blood on D-Street! 🩸 Bears Aggressive as Support Fails"
+        elif abs(val) <= 0.3: return "Tug-of-War! ⚖️ Market Braces for Major Breakout"
+        else: return "Bears in Control 🔻 Sellers Dominate the Session"
 
     @staticmethod
     def build_hero_card(nifty_data, change):
-        """
-        Creates the high-info Hero Card showing OHLC and Yesterday's Close.
-        """
-        # CRITICAL FIX: Ensure values are scalars (floats), not Series
-        curr_close = float(nifty_data['Close'].iloc[-1])
-        curr_open = float(nifty_data['Open'].iloc[-1])
-        curr_high = float(nifty_data['High'].iloc[-1])
-        curr_low = float(nifty_data['Low'].iloc[-1])
-        prev_close = float(nifty_data['Close'].iloc[-2])
+        """Creates the professional Hero Dashboard with color-coded Highs/Lows."""
+        today = nifty_data.iloc[-1]
+        yesterday = nifty_data.iloc[-2]
         
-        f_change = float(change)
-        pts_diff = curr_close - prev_close
-        sentiment_headline = HeroCardBuilder.get_market_sentiment(f_change)
+        # Explicit scalar conversion
+        curr_close = float(today['Close'])
+        curr_open = float(today['Open'])
+        curr_high = float(today['High'])
+        curr_low = float(today['Low'])
+        prev_close = float(yesterday['Close'])
         
-        # UI color logic
-        brand_color = "#22c55e" if f_change > 0 else "#ef4444"
-        bg_gradient = "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)"
+        # Contextual Color Logic
+        brand_color = "#22c55e" if change > 0 else "#ef4444"
+        open_color = "#22c55e" if curr_open > prev_close else "#ef4444"
         
         return f"""
-        <div style="background: {bg_gradient}; color: white; padding: 40px 30px; border-radius: 24px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3); margin-bottom: 40px; font-family: 'Inter', sans-serif;">
-            <div style="text-transform: uppercase; letter-spacing: 2px; font-size: 14px; font-weight: 700; color: {brand_color}; margin-bottom: 10px;">
-                {sentiment_headline}
+        <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; padding: 40px 30px; border-radius: 24px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3); margin-bottom: 40px; font-family: 'Inter', sans-serif;">
+            
+            <div style="text-transform: uppercase; letter-spacing: 2px; font-size: 13px; font-weight: 800; color: {brand_color}; margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">
+                {HeroCardBuilder.get_market_sentiment(change)}
             </div>
             
-            <div style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 30px;">
                 <div>
-                    <span style="font-size: 18px; opacity: 0.7; display: block;">NIFTY 50 INDEX</span>
-                    <span style="font-size: 64px; font-weight: 900; line-height: 1;">{curr_close:,.2f}</span>
-                    <div style="margin-top: 10px; font-size: 24px; font-weight: 700; color: {brand_color};">
-                        {'▲' if f_change > 0 else '▼'} {abs(f_change):.2f}% 
-                        <span style="font-size: 16px; opacity: 0.8; font-weight: 400; color: white; margin-left: 10px;">
-                            ({pts_diff:+.2f} pts)
+                    <span style="font-size: 16px; opacity: 0.6; font-weight: 600; display: block;">NIFTY 50 INDEX</span>
+                    <span style="font-size: 68px; font-weight: 900; line-height: 0.9;">{curr_close:,.2f}</span>
+                    <div style="margin-top: 15px; font-size: 26px; font-weight: 700; color: {brand_color};">
+                        {'▲' if change > 0 else '▼'} {abs(change):.2f}% 
+                        <span style="font-size: 16px; opacity: 0.8; font-weight: 500; color: white; margin-left: 12px; background: rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 8px;">
+                            {curr_close - prev_close:+.2f} pts
                         </span>
                     </div>
                 </div>
                 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; background: rgba(255,255,255,0.05); padding: 20px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1);">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; background: rgba(255,255,255,0.03); padding: 25px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1);">
                     <div style="border-right: 1px solid rgba(255,255,255,0.1); padding-right: 15px;">
-                        <small style="opacity:0.6; display:block; font-size:11px; text-transform:uppercase;">Prev Close</small>
-                        <b style="font-size:16px;">{prev_close:,.2f}</b>
+                        <small style="opacity:0.5; font-size:10px; text-transform:uppercase;">Prev Close</small><br>
+                        <b style="font-size:17px; color: #94a3b8;">{prev_close:,.2f}</b>
                     </div>
-                    <div>
-                        <small style="opacity:0.6; display:block; font-size:11px; text-transform:uppercase;">Open</small>
-                        <b style="font-size:16px;">{curr_open:,.2f}</b>
+                    <div style="padding-left: 5px;">
+                        <small style="opacity:0.5; font-size:10px; text-transform:uppercase;">Open Price</small><br>
+                        <b style="font-size:17px; color: {open_color};">{curr_open:,.2f}</b>
                     </div>
-                    <div style="border-right: 1px solid rgba(255,255,255,0.1); padding-right: 15px;">
-                        <small style="opacity:0.6; display:block; font-size:11px; text-transform:uppercase;">Day High</small>
-                        <b style="font-size:16px; color: #4ade80;">{curr_high:,.2f}</b>
+                    <div style="border-right: 1px solid rgba(255,255,255,0.1); padding-right: 15px; margin-top: 10px;">
+                        <small style="opacity:0.5; font-size:10px; text-transform:uppercase;">Day High</small><br>
+                        <b style="font-size:17px; color: #22c55e;">{curr_high:,.2f}</b>
                     </div>
-                    <div>
-                        <small style="opacity:0.6; display:block; font-size:11px; text-transform:uppercase;">Day Low</small>
-                        <b style="font-size:16px; color: #f87171;">{curr_low:,.2f}</b>
+                    <div style="padding-left: 5px; margin-top: 10px;">
+                        <small style="opacity:0.5; font-size:10px; text-transform:uppercase;">Day Low</small><br>
+                        <b style="font-size:17px; color: #ef4444;">{curr_low:,.2f}</b>
                     </div>
                 </div>
             </div>
         </div>
         """
+
+
+#############################################
+
+MODULE 3.2: THE HEAT-MAPPED WATCHLIST
+#############################################
+   class ReportBuilder:
+    @staticmethod
+    def get_seo_tags(change):
+        return {
+            'aioseo_title': f"Market Wrap {datetime.now().strftime('%d %b')}: Nifty {change:+.2f}% | 170+ Stocks Analysis",
+            'aioseo_description': f"Nifty ends at {change:+.2f}%. Full NSE analysis with RSI technicals, valuation forecasts, and institutional volume signals."
+        }
+
+    @staticmethod
+    def build_html_content(stock_data, idx_returns, val_data, nifty_info):
+        summary, pe, forecast, v_table = val_data
+        
+        # Filter and sort sectors by performance
+        perf_map = {INDEX_TICKERS[k]: v for k, v in idx_returns.items() if k in INDEX_TICKERS}
+        sorted_sectors = sorted(perf_map.items(), key=lambda x: x[1], reverse=True)
+
+        html = f"""
+        <style>
+            .market-card {{ font-family: 'Inter', sans-serif; max-width: 950px; margin: auto; color: #1e293b; line-height: 1.6; }}
+            .valuation-table {{ width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }}
+            .valuation-table th {{ background: #f1f5f9; text-align: left; padding: 12px; border-bottom: 2px solid #e2e8f0; }}
+            .sector-block {{ background: white; border: 1px solid #e2e8f0; border-radius: 20px; padding: 25px; margin-bottom: 25px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }}
+            .stock-grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; margin-top: 20px; }}
+            .stock-card {{ border: 1px solid #f1f5f9; padding: 12px; border-radius: 10px; font-size: 13px; background: #fff; transition: transform 0.2s; }}
+            .stock-card:hover {{ transform: translateY(-3px); border-color: #3b82f6; }}
+            .vol-heat {{ font-size: 11px; font-weight: 700; margin-top: 6px; display: block; }}
+            .tag {{ font-size: 10px; padding: 2px 5px; border-radius: 4px; font-weight: bold; text-transform: uppercase; }}
+            a {{ text-decoration: none; color: #3b82f6; font-weight: 700; }}
+        </style>
+
+        <div style="background:#f8fafc; padding:30px; border-radius:20px; border:1px solid #e2e8f0; margin-bottom:30px;">
+            <h2 style="margin-top:0;">📊 Valuation Analytics</h2>
+            <div style="display:flex; gap:40px; margin:25px 0; background:white; padding:20px; border-radius:15px;">
+                <div><small>CURRENT PE</small><br><b style="font-size:28px;">{pe}</b></div>
+                <div><small>1Y FORECAST</small><br><b style="font-size:28px; color:#22c55e;">{forecast}</b></div>
+            </div>
+            <p style="font-size:17px;">{summary}</p>
+            {v_table}
+        </div>
+        """
+        
+        for sector, s_ret in sorted_sectors:
+            if sector not in SECTOR_MAP: continue
+            html += f"""<div class="sector-block">
+                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #f1f5f9; padding-bottom:10px;">
+                    <h3 style="margin:0; font-size:22px;">{sector}</h3>
+                    <b style="font-size:20px; color:{'#16a34a' if s_ret > 0 else '#dc2626'}">{s_ret:+.2f}%</b>
+                </div>
+                <div class="stock-grid">"""
+            
+            for t in SECTOR_MAP[sector]:
+                s = stock_data.get(t, {'price':0, 'change':0, 'rsi':50, 'vol_ratio':1.0})
+                ext_url, int_url = f"https://www.google.com/finance/quote/{t}:NSE", f"{WP_URL.split('wp-json')[0]}?s={t}"
+                
+                # --- VOLUME HEAT LOGIC ---
+                vol_val = float(s['vol_ratio'])
+                if vol_val > 2.5:
+                    vol_html = f'<span class="vol-heat" style="color: #ea580c; background: #fff7ed; padding: 2px 4px; border-radius: 4px;">🔥 {vol_val:.2f}x Vol</span>'
+                elif vol_val > 1.5:
+                    vol_html = f'<span class="vol-heat" style="color: #d97706;">📈 {vol_val:.2f}x Vol</span>'
+                else:
+                    vol_html = f'<span class="vol-heat" style="color: #64748b;">{vol_val:.2f}x Vol (Avg)</span>'
+                
+                rsi_tag = '<span class="tag" style="background:#fee2e2; color:#ef4444;">Overbought</span>' if s['rsi'] > 70 else \
+                          ('<span class="tag" style="background:#dcfce7; color:#22c55e;">Oversold</span>' if s['rsi'] < 30 else '')
+
+                html += f"""
+                <div class="stock-card">
+                    <b><a href="{int_url}">{t}</a></b><br>
+                    <div style="font-size:16px; font-weight:800; margin:4px 0;"><a href="{ext_url}" target="_blank" style="color:#1e293b;">₹{s['price']:,.2f}</a></div>
+                    <div style="font-weight:700; color:{'#16a34a' if s['change'] > 0 else '#dc2626'}">{s['change']:+.2f}%</div>
+                    {vol_html}
+                    <div style="margin-top:8px;">{rsi_tag}</div>
+                </div>"""
+            html += "</div></div>"
+        return html
 
 #############################################
 ## MODULE 3: REPORT BUILDER (THE MISSING CLASS)
