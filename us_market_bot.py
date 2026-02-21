@@ -11,7 +11,7 @@ import io, re
 WP_USER = os.environ.get('WP_USER')
 WP_PASS = os.environ.get('WP_PASS')
 WP_URL = os.environ.get('WP_URL')
-CATEGORY_ID = 15  # US Market
+CATEGORY_ID = 12  # US Market
 
 RAW_WATCHLIST = {
     'Technology': ['Apple (AAPL)', 'Microsoft (MSFT)', 'Nvidia (NVDA)', 'Broadcom (AVGO)', 'Oracle (ORCL)', 'Adobe (ADBE)', 'Cisco (CSCO)', 'Salesforce (CRM)', 'AMD (AMD)', 'Qualcomm (QCOM)'],
