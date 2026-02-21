@@ -7,32 +7,54 @@ import io
 ## MODULE 1: CONFIGURATION & WATCHLIST
 #############################################
 
+# --- SECURE CREDENTIALS ---
 WP_USER = os.environ.get('WP_USER')
 WP_PASS = os.environ.get('WP_PASS')
 WP_URL = os.environ.get('WP_URL')
 CATEGORY_ID = 12 
 
+# --- UPDATED SECTOR MAP (Cleaned of Delisted Tickers) ---
 SECTOR_MAP = {
     'Nifty Bank': ['HDFCBANK', 'ICICIBANK', 'SBIN', 'AXISBANK', 'KOTAKBANK', 'INDUSINDBK', 'BANKBARODA', 'PNB', 'IDFCFIRSTB', 'FEDERALBNK'],
     'IT Services': ['TCS', 'INFY', 'HCLTECH', 'WIPRO', 'TECHM', 'LTIM', 'PERSISTENT', 'COFORGE', 'MPHASIS', 'KPITTECH'],
-    'Automobile': ['M&M', 'MARUTI', 'TATAMOTORS', 'BAJAJ-AUTO', 'EICHERMOT', 'TVSMOTOR', 'HEROMOTOCO', 'ASHOKLEY', 'MRF', 'BALKRISIND'],
+    'Automobile': ['M&M', 'MARUTI', 'BAJAJ-AUTO', 'EICHERMOT', 'TVSMOTOR', 'HEROMOTOCO', 'ASHOKLEY', 'MRF', 'BALKRISIND'], # Removed TATAMOTORS (Delisted/Issue)
     'FMCG': ['HINDUNILVR', 'ITC', 'NESTLEIND', 'BRITANNIA', 'GODREJCP', 'DABUR', 'MARICO', 'VBL', 'COLPAL', 'TATACONSUM'],
     'Metals': ['TATASTEEL', 'JSWSTEEL', 'HINDALCO', 'JINDALSTEL', 'VEDL', 'NMDC', 'SAIL', 'NATIONALUM', 'APLAPOLLO', 'RATNAMANI'],
-    'Pharma': ['SUNPHARMA', 'CIPLA', 'DRREDDY', 'LUPIN', 'AUROPHARMA', 'ZYDUSLIFE', 'DIVISLAB', 'ALKEM', 'TORNTPHARM', 'ABBOTT'],
+    'Pharma': ['SUNPHARMA', 'CIPLA', 'DRREDDY', 'LUPIN', 'AUROPHARMA', 'ZYDUSLIFE', 'DIVISLAB', 'ALKEM', 'TORNTPHARM'], # Removed ABBOTT
     'Energy': ['RELIANCE', 'NTPC', 'ONGC', 'POWERGRID', 'BPCL', 'ADANIGREEN', 'TATAPOWER', 'IOC', 'GAIL', 'ADANIENSOL'],
-    'Financial Services': ['BAJFINANCE', 'HDFCBANK', 'ICICIBANK', 'BAJAJFINSV', 'CHOLAFIN', 'REC', 'PFC', 'SHRIRAMFIN', 'SBILIFE', 'HDFCLIFE'],
+    'Financial Services': ['BAJFINANCE', 'HDFCBANK', 'ICICIBANK', 'BAJAJFINSV', 'CHOLAFIN', 'PFC', 'SHRIRAMFIN', 'SBILIFE', 'HDFCLIFE'], # Removed REC
     'PSU Bank': ['SBIN', 'BANKBARODA', 'CANBK', 'UNIONBANK', 'IOB', 'PNB', 'INDIANB', 'BANKINDIA', 'UCOBANK', 'CENTRALBK'],
     'Realty': ['DLF', 'LODHA', 'GODREJPROP', 'OBEROIRLTY', 'PRESTIGE', 'PHOENIXLTD', 'BRIGADE', 'SOBHA', 'SIGNATURE', 'SUNTECK'],
-    'Media': ['ZEEL', 'SUNTV', 'PVRINOX', 'NETWORK18', 'TV18BRDCST', 'NAZARA', 'DISHTV', 'HATHWAY', 'SAREGMAPA', 'TIPSINDLTD'],
-    'Consumption': ['ITC', 'HINDUNILVR', 'TITAN', 'ASIANPAINT', 'NESTLEIND', 'TRENT', 'DMART', 'ZOMATO', 'BRITANNIA', 'PAGEIND'],
+    'Media': ['ZEEL', 'SUNTV', 'PVRINOX', 'NETWORK18', 'NAZARA', 'DISHTV', 'HATHWAY'], # Removed TV18, SAREGMAPA, TIPS
+    'Consumption': ['ITC', 'HINDUNILVR', 'TITAN', 'ASIANPAINT', 'NESTLEIND', 'TRENT', 'DMART', 'BRITANNIA', 'PAGEIND'], # Removed ZOMATO
     'Infrastructure': ['RELIANCE', 'LT', 'BHARTIARTL', 'NTPC', 'ADANIPORTS', 'ULTRACEMCO', 'ONGC', 'GRASIM', 'IIFL', 'POWERGRID'],
-    'PSE': ['NTPC', 'ONGC', 'POWERGRID', 'COALINDIA', 'BEL', 'HAL', 'BPCL', 'IOC', 'PFC', 'REC'],
+    'PSE': ['NTPC', 'ONGC', 'POWERGRID', 'COALINDIA', 'BEL', 'HAL', 'BPCL', 'IOC', 'PFC'],
     'CPSE': ['NTPC', 'ONGC', 'POWERGRID', 'COALINDIA', 'BEL', 'NHPC', 'SJVN', 'NBCC', 'OIL', 'COCHINSHIP'],
     'Commodities': ['RELIANCE', 'TATASTEEL', 'JSWSTEEL', 'HINDALCO', 'NTPC', 'ONGC', 'AMBUJACEM', 'GRASIM', 'VEDL', 'COALINDIA'],
-    'Services': ['LT', 'ADANIPORTS', 'APOLLOHOSP', 'HDFCLIFE', 'SBILIFE', 'TRENT', 'INDIGO', 'VBL', 'TATACOMM', 'GMRINFRA']
+    'Services': ['LT', 'ADANIPORTS', 'APOLLOHOSP', 'HDFCLIFE', 'SBILIFE', 'TRENT', 'INDIGO', 'VBL', 'TATACOMM'] # Removed GMRINFRA
 }
 
-INDEX_TICKERS = {'^NSEI': 'NIFTY 50', '^NSEBANK': 'Nifty Bank', '^CNXIT': 'IT Services', '^CNXAUTO': 'Automobile', '^CNXFMCG': 'FMCG', '^CNXMETAL': 'Metals', '^CNXPHARMA': 'Pharma', '^CNXENERGY': 'Energy', '^CNXREALTY': 'Realty', '^CNXINFRA': 'Infrastructure', '^CNXFIN': 'Financial Services', '^CNXPSUBANK': 'PSU Bank', '^CNXMEDIA': 'Media', '^CNXCONSUMP': 'Consumption', '^CNXPSE': 'PSE', '^CNXCPSE': 'CPSE', '^CNXCOMMOD': 'Commodities', '^CNXSERVICE': 'Services'}
+# --- UPDATED INDEX TICKERS (Stable Yahoo Symbols) ---
+INDEX_TICKERS = {
+    '^NSEI': 'NIFTY 50', 
+    '^NSEBANK': 'Nifty Bank', 
+    '^CNXIT': 'IT Services', 
+    '^CNXAUTO': 'Automobile', 
+    '^CNXFMCG': 'FMCG', 
+    '^CNXMETAL': 'Metals', 
+    '^CNXPHARMA': 'Pharma', 
+    '^CNXENERGY': 'Energy', 
+    '^CNXREALTY': 'Realty', 
+    '^CNXINFRA': 'Infrastructure', 
+    '^CNXFIN': 'Financial Services', 
+    '^CNXPSUBANK': 'PSU Bank', 
+    '^CNXMEDIA': 'Media', 
+    '^CNXPSE': 'PSE',
+    'NIFTY_CONSUMPTION.NS': 'Consumption', 
+    'NIFTY_CPSE.NS': 'CPSE', 
+    'NIFTY_COMMODITIES.NS': 'Commodities', 
+    'NIFTY_SERV_SECTOR.NS': 'Services'
+}
 
 #############################################
 ## MODULE 2: DATA EXTRACTION ENGINE
@@ -202,29 +224,55 @@ class WordPressPublisher:
 
 def main():
     print(f"🚀 Starting Market Wrap execution for {datetime.now().strftime('%Y-%m-%d')}...")
+
+    # 1. Initialize Engines
     data_engine = MarketDataEngine()
     hero_builder = HeroCardBuilder()
     report_builder = ReportBuilder()
     publisher = WordPressPublisher()
     
+    # 2. Fetch Nifty 50 Data & FORCE SCALAR (Fixes the ValueError)
     nifty_raw = yf.download('^NSEI', period='5d', interval='1d', auto_adjust=True)
-    if nifty_raw.empty: return
-    nifty_change_pct = ((nifty_raw['Close'].iloc[-1] / nifty_raw['Close'].iloc[-2]) - 1) * 100
+    if nifty_raw.empty:
+        print("❌ Error: Could not fetch Nifty data.")
+        return
+
+    # Using .iloc[-1] and .item() ensures we get one number, not a Series
+    n_close_today = float(nifty_raw['Close'].iloc[-1])
+    n_close_prev = float(nifty_raw['Close'].iloc[-2])
+    n_change_pct = float(((n_close_today / n_close_prev) - 1) * 100)
     
-    idx_raw = yf.download(list(INDEX_TICKERS.keys()), period='5d')['Close'].dropna(axis=1)
-    idx_returns = ((idx_raw.iloc[-1] / idx_raw.iloc[-2] - 1) * 100).dropna()
+    # 3. Fetch Index Data (Handle potential ticker failures)
+    print("📥 Fetching sectoral indices...")
+    idx_raw = yf.download(list(INDEX_TICKERS.keys()), period='5d')['Close']
     
+    # Clean indices that failed to download
+    idx_raw = idx_raw.dropna(axis=1, how='all') 
+    idx_returns = ((idx_raw.iloc[-1] / idx_raw.iloc[-2] - 1) * 100).fillna(0)
+    
+    # 4. Fetch Watchlist Technicals
     stock_stats = data_engine.get_bulk_stock_stats()
     val_metrics = data_engine.get_valuation_metrics()
     
-    hero_html = hero_builder.build_hero_card(nifty_raw, nifty_change_pct)
-    body_html = report_builder.build_html_content(stock_stats, idx_returns, val_metrics, (nifty_raw['Close'].iloc[-1], nifty_change_pct))
+    # 5. Assemble UI
+    # Now n_change_pct is a single number, so HeroCard won't crash!
+    hero_html = hero_builder.build_hero_card(nifty_raw, n_change_pct)
+    body_html = report_builder.build_html_content(
+        stock_stats, 
+        idx_returns, 
+        val_metrics, 
+        (n_close_today, n_change_pct)
+    )
     
-    seo_payload = report_builder.get_seo_tags(nifty_change_pct)
-    post_title = f"India Market Wrap {datetime.now().strftime('%d %b %Y')}: Nifty {nifty_change_pct:+.2f}%"
+    # 6. SEO & Publish
+    seo_tags = report_builder.get_seo_tags(n_change_pct)
+    post_date = datetime.now().strftime('%d %b %Y')
+    post_title = f"India Market Wrap {post_date}: Nifty {n_change_pct:+.2f}%"
     
-    if publisher.push_post(post_title, hero_html + body_html, seo_payload):
-        print(f"✅ Success: {post_title}")
+    if publisher.push_post(post_title, hero_html + body_html, seo_tags):
+        print(f"✅ Post Successful: {post_title}")
+    else:
+        print("❌ Posting Failed.")
 
 if __name__ == "__main__":
     main()
