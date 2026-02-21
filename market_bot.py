@@ -239,8 +239,8 @@ class ReportBuilder:
                     <h3 style="margin:0; font-size:22px;">{sector}</h3>
                     <b style="font-size:20px; color:{'#16a34a' if s_ret > 0 else '#dc2626'}">{s_ret:+.2f}%</b>
                 </div>
-                <div style="font-size: 11px; color: #64748b; margin-top: 8px; font-style: italic;">
-                    Note: "Vol X" indicates the multiplier relative to the 20-day average volume. Higher values signal institutional activity.
+                <div style="font-size: 13px; color: #64748b; margin-top: 8px; font-style: italic;">
+                    Note: "Vol X" indicates the multiplier relative to the 20-day average volume.
                 </div>
                 <div class="stock-grid">"""
             
