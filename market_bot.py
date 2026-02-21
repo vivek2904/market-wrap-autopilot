@@ -182,77 +182,67 @@ class HeroCardBuilder:
   
 class ReportBuilder:
     @staticmethod
-    def get_seo_tags(change):
-        return {
-            'aioseo_title': f"Market Wrap {datetime.now().strftime('%d %b')}: Nifty {change:+.2f}% | 170+ Stocks Analysis",
-            'aioseo_description': f"Nifty ends at {change:+.2f}%. Full NSE analysis with RSI technicals, valuation forecasts, and institutional volume signals."
-        }
-
-    @staticmethod
     def build_html_content(stock_data, idx_returns, val_data, nifty_info):
         summary, pe, forecast, v_table = val_data
         
-        # Filter and sort sectors by performance
+        # Sort sectors by performance
         perf_map = {INDEX_TICKERS[k]: v for k, v in idx_returns.items() if k in INDEX_TICKERS}
         sorted_sectors = sorted(perf_map.items(), key=lambda x: x[1], reverse=True)
 
-        html = f"""
-        <style>
-            .market-card {{ font-family: 'Inter', sans-serif; max-width: 950px; margin: auto; color: #1e293b; line-height: 1.6; }}
-            .valuation-table {{ width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }}
-            .valuation-table th {{ background: #f1f5f9; text-align: left; padding: 12px; border-bottom: 2px solid #e2e8f0; }}
-            .sector-block {{ background: white; border: 1px solid #e2e8f0; border-radius: 20px; padding: 25px; margin-bottom: 25px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }}
-            .stock-grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; margin-top: 20px; }}
-            .stock-card {{ border: 1px solid #f1f5f9; padding: 12px; border-radius: 10px; font-size: 13px; background: #fff; transition: transform 0.2s; }}
-            .stock-card:hover {{ transform: translateY(-3px); border-color: #3b82f6; }}
-            .vol-heat {{ font-size: 11px; font-weight: 700; margin-top: 6px; display: block; }}
-            .tag {{ font-size: 10px; padding: 2px 5px; border-radius: 4px; font-weight: bold; text-transform: uppercase; }}
-            a {{ text-decoration: none; color: #3b82f6; font-weight: 700; }}
-        </style>
-
-        <div style="background:#f8fafc; padding:30px; border-radius:20px; border:1px solid #e2e8f0; margin-bottom:30px;">
-            <h2 style="margin-top:0;">📊 Valuation Analytics</h2>
-            <div style="display:flex; gap:40px; margin:25px 0; background:white; padding:20px; border-radius:15px;">
-                <div><small>CURRENT PE</small><br><b style="font-size:28px;">{pe}</b></div>
-                <div><small>1Y FORECAST</small><br><b style="font-size:28px; color:#22c55e;">{forecast}</b></div>
-            </div>
-            <p style="font-size:17px;">{summary}</p>
-            {v_table}
-        </div>
-        """
+        # Base CSS and Valuation Snapshot (Keep your existing styles here)
+        html = f"""<style>...</style> <div>Valuation Content...</div>"""
         
         for sector, s_ret in sorted_sectors:
             if sector not in SECTOR_MAP: continue
-            html += f"""<div class="sector-block">
-                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #f1f5f9; padding-bottom:10px;">
-                    <h3 style="margin:0; font-size:22px;">{sector}</h3>
-                    <b style="font-size:20px; color:{'#16a34a' if s_ret > 0 else '#dc2626'}">{s_ret:+.2f}%</b>
+            
+            # --- NEW SORTING LOGIC ---
+            # Create a list of stock stats for this sector and sort by 'vol_ratio'
+            sector_stocks = []
+            for t in SECTOR_MAP[sector]:
+                stats = stock_data.get(t, {'price':0, 'change':0, 'rsi':50, 'vol_ratio':0})
+                sector_stocks.append({'ticker': t, **stats})
+            
+            # Sort stocks: Highest Volume Multiplier first
+            sorted_stocks = sorted(sector_stocks, key=lambda x: x['vol_ratio'], reverse=True)
+            
+            # Calculate the top volume multiplier for the sector header
+            top_vol = sorted_stocks[0]['vol_ratio'] if sorted_stocks else 0
+
+            html += f"""
+            <div class="sector-block">
+                <div style="border-bottom:2px solid #f1f5f9; padding-bottom:12px; margin-bottom:15px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <h3 style="margin:0; font-size:22px;">{sector}</h3>
+                        <b style="font-size:20px; color:{'#16a34a' if s_ret > 0 else '#dc2626'}">{s_ret:+.2f}%</b>
+                    </div>
+                    <div style="font-size:12px; color:#64748b; margin-top:5px; font-weight:600;">
+                        Top Conviction: {top_vol:.2f}x of 20-day avg volume
+                    </div>
                 </div>
                 <div class="stock-grid">"""
             
-            for t in SECTOR_MAP[sector]:
-                s = stock_data.get(t, {'price':0, 'change':0, 'rsi':50, 'vol_ratio':1.0})
+            for s in sorted_stocks:
+                t = s['ticker']
                 ext_url, int_url = f"https://www.google.com/finance/quote/{t}:NSE", f"{WP_URL.split('wp-json')[0]}?s={t}"
                 
-                # --- VOLUME HEAT LOGIC (TIMES 20D AVG) ---
+                # --- HEAT LOGIC ---
                 vol_val = float(s['vol_ratio'])
                 if vol_val > 2.5:
-                    vol_html = f'<span class="vol-heat" style="color: #ea580c; background: #fff7ed; padding: 2px 4px; border-radius: 4px;">🔥 {vol_val:.2f}x Vol</span>'
+                    vol_style = "color: #ea580c; background: #fff7ed; padding: 2px 4px; border-radius: 4px;"
+                    vol_text = f"🔥 {vol_val:.2f}x Vol"
                 elif vol_val > 1.5:
-                    vol_html = f'<span class="vol-heat" style="color: #d97706;">📈 {vol_val:.2f}x Vol</span>'
+                    vol_style = "color: #d97706;"
+                    vol_text = f"📈 {vol_val:.2f}x Vol"
                 else:
-                    vol_html = f'<span class="vol-heat" style="color: #64748b;">{vol_val:.2f}x Vol (Avg)</span>'
-                
-                rsi_tag = '<span class="tag" style="background:#fee2e2; color:#ef4444;">Overbought</span>' if s['rsi'] > 70 else \
-                          ('<span class="tag" style="background:#dcfce7; color:#22c55e;">Oversold</span>' if s['rsi'] < 30 else '')
+                    vol_style = "color: #64748b;"
+                    vol_text = f"{vol_val:.2f}x Vol"
 
                 html += f"""
                 <div class="stock-card">
                     <b><a href="{int_url}">{t}</a></b><br>
                     <div style="font-size:16px; font-weight:800; margin:4px 0;"><a href="{ext_url}" target="_blank" style="color:#1e293b;">₹{s['price']:,.2f}</a></div>
                     <div style="font-weight:700; color:{'#16a34a' if s['change'] > 0 else '#dc2626'}">{s['change']:+.2f}%</div>
-                    {vol_html}
-                    <div style="margin-top:8px;">{rsi_tag}</div>
+                    <span class="vol-heat" style="{vol_style}">{vol_text}</span>
                 </div>"""
             html += "</div></div>"
         return html
