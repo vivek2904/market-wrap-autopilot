@@ -138,7 +138,50 @@ class HeroCardBuilder:
         return float(val)
 
     @staticmethod
-    def build_hero_card(nifty_data, change):
+    def build_volume_breakout(stock_data):
+        """Builds a compact alert strip for stocks with VolumeX > 2.5"""
+        breakouts = []
+        for t, stats in stock_data.items():
+            if stats.get('vol_ratio', 0) > 2.5:
+                breakouts.append({
+                    'ticker': t,
+                    'price': stats['price'],
+                    'change': stats['change'],
+                    'vol_ratio': stats['vol_ratio']
+                })
+        
+        if not breakouts:
+            return ""
+        
+        # Sort by volume ratio descending
+        breakouts.sort(key=lambda x: x['vol_ratio'], reverse=True)
+        
+        cards = ""
+        for b in breakouts:
+            cards += f"""
+            <div style="display: inline-flex; align-items: center; gap: 8px; background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%); border: 1px solid #fed7aa; border-radius: 10px; padding: 8px 12px; margin: 0 6px 6px 0; min-width: 140px;">
+                <div style="font-size: 13px; font-weight: 800; color: #1e293b;">{b['ticker']}</div>
+                <div style="font-size: 12px; font-weight: 700; color: {'#16a34a' if b['change'] > 0 else '#dc2626'};">{b['change']:+.2f}%</div>
+                <div style="font-size: 11px; font-weight: 700; color: #c2410c; background: #fff; padding: 2px 6px; border-radius: 4px;">🔥 {b['vol_ratio']:.2f}x</div>
+            </div>
+            """
+        
+        return f"""
+        <div style="background: #0f172a; border-radius: 16px; padding: 16px 20px; margin-bottom: 16px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.2);">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+                <span style="font-size: 18px;">🔥</span>
+                <span style="font-size: 14px; font-weight: 800; color: #f8fafc; text-transform: uppercase; letter-spacing: 1px;">Volume Breakout Alert</span>
+                <span style="font-size: 11px; color: #94a3b8; font-weight: 500;">{len(breakouts)} stocks with &gt;2.5x volume</span>
+            </div>
+            <div style="display: flex; flex-wrap: wrap;">
+                {cards}
+            </div>
+        </div>
+        """
+
+    @staticmethod
+    def build_hero_card(nifty_data, change, stock_data=None):
+        """Creates the professional Hero Dashboard with color-coded Highs/Lows."""
         today = nifty_data.iloc[-1]
         yesterday = nifty_data.iloc[-2]
         
@@ -151,7 +194,12 @@ class HeroCardBuilder:
         brand_color = "#22c55e" if change > 0 else "#ef4444"
         open_color = "#22c55e" if curr_open > prev_close else "#ef4444"
         
+        # Build volume breakout section
+        breakout_html = HeroCardBuilder.build_volume_breakout(stock_data) if stock_data else ""
+        
         return f"""
+        {breakout_html}
+        
         <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; padding: 24px 20px; border-radius: 16px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.25); margin-bottom: 20px; font-family: 'Inter', sans-serif;">
             
             <div style="text-transform: uppercase; letter-spacing: 1.5px; font-size: 11px; font-weight: 800; color: {brand_color}; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 8px;">
@@ -191,7 +239,6 @@ class HeroCardBuilder:
             </div>
         </div>
         """
-
 #############################################
 ###MODULE 3.2: THE HEAT-MAPPED WATCHLIST
 #############################################
@@ -474,7 +521,7 @@ def main():
     val_metrics = data_engine.get_valuation_metrics()
     
     # 5. Build Components
-    hero_html = hero_builder.build_hero_card(nifty_raw, n_change_pct)
+    hero_html = hero_builder.build_hero_card(nifty_raw, n_change_pct, stock_stats)
     body_html = report_builder.build_html_content(
         stock_stats, 
         idx_returns, 
