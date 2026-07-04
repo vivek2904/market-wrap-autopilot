@@ -240,7 +240,7 @@ class ReportBuilder:
                 width: 100% !important; 
                 border-collapse: collapse !important; 
                 border-spacing: 0 !important; 
-                font-size: 12px !important; 
+                font-size: 11px !important; 
                 font-family: 'Inter', -apple-system, sans-serif !important; 
                 margin: 0 !important; 
                 table-layout: fixed !important;
@@ -252,9 +252,9 @@ class ReportBuilder:
                 background: #1e293b !important; 
                 color: #f8fafc !important;
                 text-align: left !important; 
-                padding: 8px 7px !important; 
-                font-size: 10px !important; 
-                font-weight: 600 !important; 
+                padding: 7px 6px !important; 
+                font-size: 9px !important; 
+                font-weight: 700 !important; 
                 text-transform: uppercase !important; 
                 letter-spacing: 0.5px !important; 
                 border: none !important;
@@ -263,11 +263,12 @@ class ReportBuilder:
                 text-overflow: ellipsis !important;
             }}
             .stock-table td {{ 
-                padding: 7px 7px !important; 
+                padding: 6px 6px !important; 
                 border: none !important; 
                 border-bottom: 1px solid #e2e8f0 !important;
                 vertical-align: middle !important;
-                font-size: 12px !important;
+                font-size: 11px !important;
+                font-weight: 600 !important;
                 color: #1e293b !important;
                 overflow: hidden !important;
                 text-overflow: ellipsis !important;
@@ -281,24 +282,24 @@ class ReportBuilder:
                 text-decoration: none !important; 
                 color: #2563eb !important; 
                 font-weight: 700 !important; 
-                font-size: 12px !important;
+                font-size: 11px !important;
             }}
-            .stock-table .price {{ font-size: 13px !important; font-weight: 800 !important; color: #0f172a !important; }}
-            .stock-table .change {{ font-weight: 700 !important; font-size: 12px !important; }}
+            .stock-table .price {{ font-size: 12px !important; font-weight: 800 !important; color: #0f172a !important; }}
+            .stock-table .change {{ font-weight: 700 !important; font-size: 11px !important; }}
             .stock-table .volx {{ 
                 font-weight: 700 !important; 
-                font-size: 11px !important; 
+                font-size: 10px !important; 
                 padding: 2px 5px !important; 
                 border-radius: 4px !important; 
                 display: inline-block !important;
                 white-space: nowrap !important;
             }}
-            .stock-table .vol-raw {{ font-size: 10px !important; color: #475569 !important; }}
+            .stock-table .vol-raw {{ font-size: 9px !important; font-weight: 600 !important; color: #475569 !important; }}
             .stock-table .tag {{ 
-                font-size: 9px !important; 
-                padding: 2px 5px !important; 
+                font-size: 8px !important; 
+                font-weight: 700 !important; 
+                padding: 2px 4px !important; 
                 border-radius: 3px !important; 
-                font-weight: bold !important; 
                 text-transform: uppercase !important;
                 white-space: nowrap !important;
             }}
@@ -312,25 +313,27 @@ class ReportBuilder:
             .stock-table th:nth-child(6), .stock-table td:nth-child(6) {{ width: 14%; }}
             .stock-table th:nth-child(7), .stock-table td:nth-child(7) {{ width: 12%; }}
             
-            /* MOBILE: All visible, readable, compact */
+            /* MOBILE: Smaller but BOLD for visibility */
             @media (max-width: 640px) {{
-                .sector-block {{ padding: 8px 6px !important; }}
-                .stock-table {{ font-size: 10px !important; border-radius: 6px !important; }}
+                .sector-block {{ padding: 8px 5px !important; }}
+                .stock-table {{ font-size: 9px !important; border-radius: 6px !important; }}
                 .stock-table th {{ 
-                    padding: 5px 4px !important; 
-                    font-size: 9px !important; 
+                    padding: 4px 3px !important; 
+                    font-size: 8px !important; 
+                    font-weight: 700 !important;
                     letter-spacing: 0 !important;
                 }}
                 .stock-table td {{ 
-                    padding: 5px 4px !important; 
-                    font-size: 10px !important;
+                    padding: 4px 3px !important; 
+                    font-size: 9px !important;
+                    font-weight: 700 !important;
                 }}
-                .stock-table a {{ font-size: 10px !important; }}
-                .stock-table .price {{ font-size: 11px !important; }}
-                .stock-table .change {{ font-size: 10px !important; }}
-                .stock-table .volx {{ font-size: 9px !important; padding: 1px 3px !important; }}
-                .stock-table .vol-raw {{ font-size: 9px !important; }}
-                .stock-table .tag {{ font-size: 8px !important; padding: 1px 3px !important; }}
+                .stock-table a {{ font-size: 9px !important; font-weight: 700 !important; }}
+                .stock-table .price {{ font-size: 10px !important; font-weight: 800 !important; }}
+                .stock-table .change {{ font-size: 9px !important; font-weight: 700 !important; }}
+                .stock-table .volx {{ font-size: 8px !important; font-weight: 700 !important; padding: 1px 3px !important; }}
+                .stock-table .vol-raw {{ font-size: 8px !important; font-weight: 600 !important; }}
+                .stock-table .tag {{ font-size: 7px !important; font-weight: 700 !important; padding: 1px 3px !important; }}
             }}
         </style>
 
