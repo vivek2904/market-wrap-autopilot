@@ -235,63 +235,66 @@ class ReportBuilder:
             .sector-ret {{ font-size:15px !important; font-weight:700 !important; }}
             .vol-hint {{ font-size: 10px !important; color: #64748b !important; margin: 0 0 6px 0 !important; font-style: italic !important; }}
             
-            /* Force table reset - kills theme defaults */
-            .swipe-table {{ overflow-x: auto !important; -webkit-overflow-scrolling: touch !important; margin: 0 !important; padding: 0 !important; }}
-            .swipe-table table {{ 
+            /* DARK THEME TABLE */
+            .stock-table {{ 
                 width: 100% !important; 
                 border-collapse: collapse !important; 
-                border-spacing: 0 !important;
+                border-spacing: 0 !important; 
                 font-size: 12px !important; 
-                font-family: 'Inter', -apple-system, sans-serif !important;
-                margin: 0 !important;
-            }}
-            .swipe-table table * {{ 
+                font-family: 'Inter', -apple-system, sans-serif !important; 
                 margin: 0 !important; 
-                padding: 0 !important; 
-                border: none !important; 
-                box-shadow: none !important;
-                background: transparent !important;
+                table-layout: fixed !important;
+                border-radius: 8px !important;
+                overflow: hidden !important;
             }}
-            .swipe-table thead {{ display: table-header-group !important; }}
-            .swipe-table th {{ 
-                background: #f1f5f9 !important; 
+            .stock-table thead {{ display: table-header-group !important; }}
+            .stock-table th {{ 
+                background: #1e293b !important; 
+                color: #f8fafc !important;
                 text-align: left !important; 
-                padding: 6px 8px !important; 
+                padding: 8px 7px !important; 
                 font-size: 10px !important; 
-                font-weight: 700 !important; 
-                color: #475569 !important; 
+                font-weight: 600 !important; 
                 text-transform: uppercase !important; 
                 letter-spacing: 0.5px !important; 
-                border-bottom: 2px solid #e2e8f0 !important;
+                border: none !important;
                 white-space: nowrap !important;
+                overflow: hidden !important;
+                text-overflow: ellipsis !important;
             }}
-            .swipe-table td {{ 
-                padding: 5px 8px !important; 
-                border-bottom: 1px solid #f1f5f9 !important; 
+            .stock-table td {{ 
+                padding: 7px 7px !important; 
+                border: none !important; 
+                border-bottom: 1px solid #e2e8f0 !important;
                 vertical-align: middle !important;
                 font-size: 12px !important;
-                color: #334155 !important;
+                color: #1e293b !important;
+                overflow: hidden !important;
+                text-overflow: ellipsis !important;
+                white-space: nowrap !important;
             }}
-            .swipe-table tr:hover td {{ background: #f8fafc !important; }}
-            .swipe-table tr:last-child td {{ border-bottom: none !important; }}
-            .swipe-table a {{ 
+            .stock-table tbody tr:nth-child(even) td {{ background: #f8fafc !important; }}
+            .stock-table tbody tr:nth-child(odd) td {{ background: #ffffff !important; }}
+            .stock-table tbody tr:hover td {{ background: #e0f2fe !important; }}
+            .stock-table tbody tr:last-child td {{ border-bottom: none !important; }}
+            .stock-table a {{ 
                 text-decoration: none !important; 
                 color: #2563eb !important; 
                 font-weight: 700 !important; 
                 font-size: 12px !important;
             }}
-            .swipe-table .price {{ font-size: 13px !important; font-weight: 800 !important; color: #0f172a !important; }}
-            .swipe-table .change {{ font-weight: 700 !important; font-size: 12px !important; }}
-            .swipe-table .volx {{ 
+            .stock-table .price {{ font-size: 13px !important; font-weight: 800 !important; color: #0f172a !important; }}
+            .stock-table .change {{ font-weight: 700 !important; font-size: 12px !important; }}
+            .stock-table .volx {{ 
                 font-weight: 700 !important; 
                 font-size: 11px !important; 
-                padding: 2px 6px !important; 
+                padding: 2px 5px !important; 
                 border-radius: 4px !important; 
                 display: inline-block !important;
                 white-space: nowrap !important;
             }}
-            .swipe-table .vol-raw {{ font-size: 10px !important; color: #475569 !important; }}
-            .swipe-table .tag {{ 
+            .stock-table .vol-raw {{ font-size: 10px !important; color: #475569 !important; }}
+            .stock-table .tag {{ 
                 font-size: 9px !important; 
                 padding: 2px 5px !important; 
                 border-radius: 3px !important; 
@@ -300,12 +303,34 @@ class ReportBuilder:
                 white-space: nowrap !important;
             }}
             
+            /* Column widths */
+            .stock-table th:nth-child(1), .stock-table td:nth-child(1) {{ width: 15%; }}
+            .stock-table th:nth-child(2), .stock-table td:nth-child(2) {{ width: 17%; }}
+            .stock-table th:nth-child(3), .stock-table td:nth-child(3) {{ width: 13%; }}
+            .stock-table th:nth-child(4), .stock-table td:nth-child(4) {{ width: 15%; }}
+            .stock-table th:nth-child(5), .stock-table td:nth-child(5) {{ width: 14%; }}
+            .stock-table th:nth-child(6), .stock-table td:nth-child(6) {{ width: 14%; }}
+            .stock-table th:nth-child(7), .stock-table td:nth-child(7) {{ width: 12%; }}
+            
+            /* MOBILE: All visible, readable, compact */
             @media (max-width: 640px) {{
-                .swipe-table {{ overflow-x: auto !important; }}
-                .swipe-table table {{ min-width: 520px !important; font-size: 11px !important; }}
-                .swipe-table th, .swipe-table td {{ padding: 4px 6px !important; }}
-                .swipe-table .price {{ font-size: 12px !important; }}
-                .swipe-table a {{ font-size: 11px !important; }}
+                .sector-block {{ padding: 8px 6px !important; }}
+                .stock-table {{ font-size: 10px !important; border-radius: 6px !important; }}
+                .stock-table th {{ 
+                    padding: 5px 4px !important; 
+                    font-size: 9px !important; 
+                    letter-spacing: 0 !important;
+                }}
+                .stock-table td {{ 
+                    padding: 5px 4px !important; 
+                    font-size: 10px !important;
+                }}
+                .stock-table a {{ font-size: 10px !important; }}
+                .stock-table .price {{ font-size: 11px !important; }}
+                .stock-table .change {{ font-size: 10px !important; }}
+                .stock-table .volx {{ font-size: 9px !important; padding: 1px 3px !important; }}
+                .stock-table .vol-raw {{ font-size: 9px !important; }}
+                .stock-table .tag {{ font-size: 8px !important; padding: 1px 3px !important; }}
             }}
         </style>
 
@@ -337,8 +362,7 @@ class ReportBuilder:
                 </div>
                 <div class="vol-hint">💡 VolumeX = 20 Day Avg Volume Multiplier</div>
                 
-                <div class="swipe-table">
-                <table>
+                <table class="stock-table">
                     <thead>
                         <tr>
                             <th>Ticker</th>
@@ -388,7 +412,6 @@ class ReportBuilder:
             html += """
                     </tbody>
                 </table>
-                </div>
             </div>"""
         return html
         
