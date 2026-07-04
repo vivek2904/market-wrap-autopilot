@@ -228,34 +228,43 @@ class ReportBuilder:
             .sector-header {{ display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px; }}
             .sector-header h3 {{ margin:0; font-size:16px; font-weight:700; }}
             .sector-ret {{ font-size:15px; font-weight:700; }}
-            .vol-hint {{ font-size: 10px; color: #94a3b8; margin: 0 0 6px 0; font-style: italic; }}
+            .vol-hint {{ font-size: 10px; color: #64748b; margin: 0 0 6px 0; font-style: italic; }}
             
             .stock-table {{ width: 100%; border-collapse: collapse; font-size: 12px; }}
-            .stock-table th {{ background: #f8fafc; text-align: left; padding: 6px 8px; font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #e2e8f0; }}
+            .stock-table th {{ background: #f1f5f9; text-align: left; padding: 6px 8px; font-size: 10px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #e2e8f0; }}
             .stock-table td {{ padding: 5px 8px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }}
             .stock-table tr:hover td {{ background: #f8fafc; }}
             .stock-table tr:last-child td {{ border-bottom: none; }}
-            .stock-table a {{ text-decoration: none; color: #3b82f6; font-weight: 700; }}
-            .stock-table .price {{ font-size: 13px; font-weight: 800; color: #1e293b; }}
+            .stock-table a {{ text-decoration: none; color: #2563eb; font-weight: 700; }}
+            .stock-table .price {{ font-size: 13px; font-weight: 800; color: #0f172a; }}
             .stock-table .change {{ font-weight: 700; }}
             .stock-table .volx {{ font-weight: 700; font-size: 11px; padding: 2px 6px; border-radius: 4px; display: inline-block; }}
-            .stock-table .vol-raw {{ font-size: 10px; color: #94a3b8; }}
-            .stock-table .tag {{ font-size: 9px; padding: 1px 4px; border-radius: 3px; font-weight: bold; text-transform: uppercase; }}
+            .stock-table .vol-raw {{ font-size: 10px; color: #475569; }}
+            .stock-table .tag {{ font-size: 9px; padding: 2px 5px; border-radius: 3px; font-weight: bold; text-transform: uppercase; }}
             
             .stock-table th:nth-child(1), .stock-table td:nth-child(1) {{ width: 80px; }}
-            .stock-table th:nth-child(2), .stock-table td:nth-child(2) {{ width: 90px; }}
+            .stock-table th:nth-child(2), .stock-table td:nth-child(2) {{ width: 85px; }}
             .stock-table th:nth-child(3), .stock-table td:nth-child(3) {{ width: 65px; }}
-            .stock-table th:nth-child(4), .stock-table td:nth-child(4) {{ width: 75px; }}
-            .stock-table th:nth-child(5), .stock-table td:nth-child(5) {{ width: 70px; }}
-            .stock-table th:nth-child(6), .stock-table td:nth-child(6) {{ width: 70px; }}
+            .stock-table th:nth-child(4), .stock-table td:nth-child(4) {{ width: 70px; }}
+            .stock-table th:nth-child(5), .stock-table td:nth-child(5) {{ width: 65px; }}
+            .stock-table th:nth-child(6), .stock-table td:nth-child(6) {{ width: 65px; }}
             .stock-table th:nth-child(7), .stock-table td:nth-child(7) {{ width: 70px; }}
+            
+            /* MOBILE: Horizontal scroll wrapper */
+            @media (max-width: 640px) {{
+                .table-wrap {{ overflow-x: auto; -webkit-overflow-scrolling: touch; }}
+                .stock-table {{ min-width: 520px; font-size: 11px; }}
+                .stock-table th, .stock-table td {{ padding: 4px 6px; }}
+                .stock-table .price {{ font-size: 12px; }}
+                .stock-table a {{ font-size: 11px; }}
+            }}
         </style>
 
         <div style="background:#f8fafc; padding:14px; border-radius:12px; border:1px solid #e2e8f0; margin-bottom:14px;">
             <h2 style="margin:0 0 8px 0; font-size:16px;">📊 Valuation Analytics</h2>
             <div style="display:flex; gap:20px; margin:8px 0; background:white; padding:10px 14px; border-radius:8px;">
                 <div><small style="font-size:10px; color:#64748b;">CURRENT PE</small><br><b style="font-size:15px;">{pe}</b></div>
-                <div><small style="font-size:10px; color:#64748b;">1Y FORECAST</small><br><b style="font-size:15px; color:#22c55e;">{forecast}</b></div>
+                <div><small style="font-size:10px; color:#64748b;">1Y FORECAST</small><br><b style="font-size:15px; color:#15803d;">{forecast}</b></div>
             </div>
             <p style="font-size:13px; margin:6px 0; line-height:1.5;">{summary}</p>
             {v_table}
@@ -275,10 +284,11 @@ class ReportBuilder:
             html += f"""<div class="sector-block">
                 <div class="sector-header">
                     <h3>{sector}</h3>
-                    <b class="sector-ret" style="color:{'#16a34a' if s_ret > 0 else '#dc2626'}">{s_ret:+.2f}%</b>
+                    <b class="sector-ret" style="color:{'#15803d' if s_ret > 0 else '#dc2626'}">{s_ret:+.2f}%</b>
                 </div>
                 <div class="vol-hint">💡 VolumeX = 20 Day Avg Volume Multiplier</div>
                 
+                <div class="table-wrap">
                 <table class="stock-table">
                     <thead>
                         <tr>
@@ -303,23 +313,23 @@ class ReportBuilder:
                 
                 vol_val = float(s['vol_ratio'])
                 if vol_val > 2.5:
-                    volx_style = "background: #fff7ed; color: #ea580c; border: 1px solid #ffedd5;"
+                    volx_style = "background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa;"
                     volx_label = f"🔥 {vol_val:.2f}x"
                 elif vol_val > 1.5:
-                    volx_style = "color: #d97706;"
+                    volx_style = "color: #b45309;"
                     volx_label = f"📈 {vol_val:.2f}x"
                 else:
-                    volx_style = "color: #64748b;"
+                    volx_style = "color: #475569;"
                     volx_label = f"{vol_val:.2f}x"
                 
-                rsi_tag = '<span class="tag" style="background:#fee2e2; color:#ef4444;">Overbought</span>' if s['rsi'] > 70 else \
-                          ('<span class="tag" style="background:#dcfce7; color:#22c55e;">Oversold</span>' if s['rsi'] < 30 else '—')
+                rsi_tag = '<span class="tag" style="background:#fee2e2; color:#b91c1c;">Overbought</span>' if s['rsi'] > 70 else \
+                          ('<span class="tag" style="background:#dcfce7; color:#15803d;">Oversold</span>' if s['rsi'] < 30 else '—')
 
                 html += f"""
                         <tr>
                             <td><a href="{ext_url}" target="_blank">{t}</a></td>
                             <td class="price">₹{s['price']:,.2f}</td>
-                            <td class="change" style="color:{'#16a34a' if s['change'] > 0 else '#dc2626'}">{s['change']:+.2f}%</td>
+                            <td class="change" style="color:{'#15803d' if s['change'] > 0 else '#dc2626'}">{s['change']:+.2f}%</td>
                             <td><span class="volx" style="{volx_style}">{volx_label}</span></td>
                             <td class="vol-raw">{t_vol}</td>
                             <td class="vol-raw">{a_vol}</td>
@@ -329,6 +339,7 @@ class ReportBuilder:
             html += """
                     </tbody>
                 </table>
+                </div>
             </div>"""
         return html
         
