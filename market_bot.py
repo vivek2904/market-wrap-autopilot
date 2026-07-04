@@ -206,7 +206,6 @@ class ReportBuilder:
 
     @staticmethod
     def format_vol(n):
-        """Formats numbers into Indian Lakh/Crore system for readability."""
         if n >= 1e7: return f"{n/1e7:.2f}Cr"
         if n >= 1e5: return f"{n/1e5:.2f}L"
         if n >= 1e3: return f"{n/1e3:.1f}K"
@@ -216,7 +215,6 @@ class ReportBuilder:
     def build_html_content(stock_data, idx_returns, val_data, nifty_info):
         summary, pe, forecast, v_table = val_data
         
-        # Sort sectors by index performance
         perf_map = {INDEX_TICKERS[k]: v for k, v in idx_returns.items() if k in INDEX_TICKERS}
         sorted_sectors = sorted(perf_map.items(), key=lambda x: x[1], reverse=True)
 
@@ -225,27 +223,44 @@ class ReportBuilder:
             .market-card {{ font-family: 'Inter', sans-serif; max-width: 950px; margin: auto; color: #1e293b; line-height: 1.4; }}
             .valuation-table {{ width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 13px; }}
             .valuation-table th {{ background: #f1f5f9; text-align: left; padding: 8px 10px; border-bottom: 2px solid #e2e8f0; }}
-            .sector-block {{ background: white; border: 1px solid #e2e8f0; border-radius: 14px; padding: 16px 18px; margin-bottom: 14px; box-shadow: 0 2px 4px -1px rgba(0,0,0,0.04); }}
-            .stock-grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-top: 10px; }}
-            .stock-card {{ border: 1px solid #f1f5f9; padding: 8px 10px; border-radius: 8px; font-size: 12px; background: #fff; transition: transform 0.15s; }}
-            .stock-card:hover {{ transform: translateY(-2px); border-color: #3b82f6; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }}
-            .vol-heat {{ font-size: 10px; font-weight: 700; margin-top: 3px; display: block; }}
-            .vol-subtext {{ font-size: 9px; color: #94a3b8; margin-top: 2px; line-height: 1.2; }}
-            .tag {{ font-size: 9px; padding: 1px 4px; border-radius: 3px; font-weight: bold; text-transform: uppercase; }}
-            a {{ text-decoration: none; color: #3b82f6; font-weight: 700; }}
-            .sector-header {{ display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #f1f5f9; padding-bottom:6px; margin-bottom:4px; }}
-            .sector-header h3 {{ margin:0; font-size:17px; font-weight:700; }}
-            .sector-ret {{ font-size:16px; font-weight:700; }}
-            .vol-hint {{ font-size: 11px; color: #64748b; margin: 4px 0 2px 0; font-style: italic; font-weight: 500; }}
+            .sector-block {{ background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }}
+            .sector-header {{ display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #f1f5f9; padding-bottom:6px; margin-bottom:6px; }}
+            .sector-header h3 {{ margin:0; font-size:16px; font-weight:700; }}
+            .sector-ret {{ font-size:15px; font-weight:700; }}
+            .vol-hint {{ font-size: 10px; color: #94a3b8; margin: 0 0 6px 0; font-style: italic; }}
+            
+            .stock-row {{ 
+                display: grid; 
+                grid-template-columns: 90px 90px 65px 90px 70px 110px 80px; 
+                gap: 6px; 
+                align-items: center; 
+                padding: 5px 8px; 
+                border-bottom: 1px solid #f1f5f9; 
+                font-size: 12px; 
+            }}
+            .stock-row:last-child {{ border-bottom: none; }}
+            .stock-row:hover {{ background: #f8fafc; }}
+            .stock-row b {{ font-weight: 700; }}
+            .stock-row a {{ text-decoration: none; color: #3b82f6; font-weight: 700; }}
+            .stock-row .price {{ font-size: 13px; font-weight: 800; color: #1e293b; }}
+            .stock-row .change {{ font-weight: 700; font-size: 12px; }}
+            .stock-row .volx {{ font-weight: 700; font-size: 11px; padding: 1px 5px; border-radius: 4px; display: inline-block; }}
+            .stock-row .vol-raw {{ font-size: 10px; color: #94a3b8; }}
+            .stock-row .tag {{ font-size: 9px; padding: 1px 4px; border-radius: 3px; font-weight: bold; text-transform: uppercase; }}
+            
+            @media (max-width: 640px) {{
+                .stock-row {{ grid-template-columns: 70px 75px 55px 70px 55px 90px 60px; font-size: 11px; gap: 4px; padding: 4px 5px; }}
+                .stock-row .price {{ font-size: 12px; }}
+            }}
         </style>
 
-        <div style="background:#f8fafc; padding:18px; border-radius:14px; border:1px solid #e2e8f0; margin-bottom:18px;">
-            <h2 style="margin:0 0 10px 0; font-size:18px;">📊 Valuation Analytics</h2>
-            <div style="display:flex; gap:24px; margin:10px 0; background:white; padding:12px 16px; border-radius:10px;">
-                <div><small style="font-size:11px; color:#64748b;">CURRENT PE</small><br><b style="font-size:17px;">{pe}</b></div>
-                <div><small style="font-size:11px; color:#64748b;">1Y FORECAST</small><br><b style="font-size:17px; color:#22c55e;">{forecast}</b></div>
+        <div style="background:#f8fafc; padding:14px; border-radius:12px; border:1px solid #e2e8f0; margin-bottom:14px;">
+            <h2 style="margin:0 0 8px 0; font-size:16px;">📊 Valuation Analytics</h2>
+            <div style="display:flex; gap:20px; margin:8px 0; background:white; padding:10px 14px; border-radius:8px;">
+                <div><small style="font-size:10px; color:#64748b;">CURRENT PE</small><br><b style="font-size:15px;">{pe}</b></div>
+                <div><small style="font-size:10px; color:#64748b;">1Y FORECAST</small><br><b style="font-size:15px; color:#22c55e;">{forecast}</b></div>
             </div>
-            <p style="font-size:14px; margin:8px 0; line-height:1.5;">{summary}</p>
+            <p style="font-size:13px; margin:6px 0; line-height:1.5;">{summary}</p>
             {v_table}
         </div>
         """
@@ -265,45 +280,55 @@ class ReportBuilder:
                     <h3>{sector}</h3>
                     <b class="sector-ret" style="color:{'#16a34a' if s_ret > 0 else '#dc2626'}">{s_ret:+.2f}%</b>
                 </div>
-                <div class="vol-hint">💡 VolumeX is the multiplier of 20 Day average volume.</div>
-                <div class="stock-grid">"""
+                <div class="vol-hint">💡 VolumeX = 20 Day Avg Volume Multiplier</div>
+                
+                <!-- Header Row -->
+                <div class="stock-row" style="background:#f8fafc; font-weight:700; font-size:10px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; border-radius:4px; margin-bottom:3px;">
+                    <div>Ticker</div>
+                    <div>Price</div>
+                    <div>Change</div>
+                    <div>VolumeX</div>
+                    <div>Today Vol</div>
+                    <div>Avg Vol</div>
+                    <div>Signal</div>
+                </div>
+            """
             
             for s in sorted_stocks:
                 t = s['ticker']
-                ext_url, int_url = f"https://www.google.com/finance/quote/{t}:NSE", f"{WP_URL.split('wp-json')[0]}?s={t}"
+                ext_url = f"https://www.google.com/finance/quote/{t}:NSE"
                 
                 t_vol = ReportBuilder.format_vol(s['curr_vol'])
                 a_vol = ReportBuilder.format_vol(s['avg_vol'])
                 
                 vol_val = float(s['vol_ratio'])
                 if vol_val > 2.5:
-                    vol_style = "color: #ea580c; background: #fff7ed; padding: 2px 5px; border-radius: 4px; border: 1px solid #ffedd5; display:inline-block;"
-                    vol_label = f"🔥 {vol_val:.2f}x Vol"
+                    volx_style = "background: #fff7ed; color: #ea580c; border: 1px solid #ffedd5;"
+                    volx_label = f"🔥 {vol_val:.2f}x"
                 elif vol_val > 1.5:
-                    vol_style = "color: #d97706;"
-                    vol_label = f"📈 {vol_val:.2f}x Vol"
+                    volx_style = "color: #d97706;"
+                    volx_label = f"📈 {vol_val:.2f}x"
                 else:
-                    vol_style = "color: #64748b;"
-                    vol_label = f"{vol_val:.2f}x Vol"
+                    volx_style = "color: #64748b;"
+                    volx_label = f"{vol_val:.2f}x"
                 
                 rsi_tag = '<span class="tag" style="background:#fee2e2; color:#ef4444;">Overbought</span>' if s['rsi'] > 70 else \
-                          ('<span class="tag" style="background:#dcfce7; color:#22c55e;">Oversold</span>' if s['rsi'] < 30 else '')
+                          ('<span class="tag" style="background:#dcfce7; color:#22c55e;">Oversold</span>' if s['rsi'] < 30 else '<span style="color:#cbd5e1;">—</span>')
 
                 html += f"""
-                <div class="stock-card">
-                    <b><a href="{int_url}" style="font-size:12px;">{t}</a></b><br>
-                    <div style="font-size:14px; font-weight:800; margin:2px 0;"><a href="{ext_url}" target="_blank" style="color:#1e293b;">₹{s['price']:,.2f}</a></div>
-                    <div style="font-weight:700; font-size:12px; color:{'#16a34a' if s['change'] > 0 else '#dc2626'}">{s['change']:+.2f}%</div>
-                    
-                    <div style="{vol_style} margin-top:4px;">
-                        <span class="vol-heat">{vol_label}</span>
-                        <div class="vol-subtext">Today: {t_vol} | Avg: {a_vol}</div>
-                    </div>
-                    
-                    <div style="margin-top:4px;">{rsi_tag}</div>
+                <div class="stock-row">
+                    <div><a href="{ext_url}" target="_blank">{t}</a></div>
+                    <div class="price">₹{s['price']:,.2f}</div>
+                    <div class="change" style="color:{'#16a34a' if s['change'] > 0 else '#dc2626'}">{s['change']:+.2f}%</div>
+                    <div><span class="volx" style="{volx_style}">{volx_label}</span></div>
+                    <div class="vol-raw">{t_vol}</div>
+                    <div class="vol-raw">{a_vol}</div>
+                    <div>{rsi_tag}</div>
                 </div>"""
-            html += "</div></div>"
+            
+            html += "</div>"
         return html
+        
 #############################################
 ## MODULE 4: WORDPRESS PUBLISHER
 #############################################
