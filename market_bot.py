@@ -220,53 +220,102 @@ class ReportBuilder:
 
         html = f"""
         <style>
-            .market-card {{ font-family: 'Inter', sans-serif; max-width: 950px; margin: auto; color: #1e293b; line-height: 1.4; }}
-            .valuation-table {{ width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }}
-            .valuation-table th {{ background: #f1f5f9; text-align: left; padding: 8px 10px; border-bottom: 2px solid #e2e8f0; }}
+            .market-card {{ font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important; max-width: 950px; margin: auto; color: #1e293b !important; line-height: 1.4 !important; }}
             
-            .sector-block {{ background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }}
-            .sector-header {{ display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px; }}
-            .sector-header h3 {{ margin:0; font-size:16px; font-weight:700; }}
-            .sector-ret {{ font-size:15px; font-weight:700; }}
-            .vol-hint {{ font-size: 10px; color: #64748b; margin: 0 0 6px 0; font-style: italic; }}
+            .val-box {{ background:#f8fafc !important; padding:14px !important; border-radius:12px !important; border:1px solid #e2e8f0 !important; margin-bottom:14px !important; }}
+            .val-box h2 {{ margin:0 0 8px 0 !important; font-size:16px !important; color: #0f172a !important; }}
+            .val-metrics {{ display:flex; gap:20px; margin:8px 0; background:white !important; padding:10px 14px !important; border-radius:8px !important; border: 1px solid #e2e8f0 !important; }}
+            .val-metrics b {{ font-size:15px !important; color: #0f172a !important; }}
+            .val-metrics .green {{ color: #15803d !important; }}
+            .val-box p {{ font-size:13px !important; margin:6px 0 !important; line-height:1.5 !important; color: #334155 !important; }}
             
-            .stock-table {{ width: 100%; border-collapse: collapse; font-size: 12px; }}
-            .stock-table th {{ background: #f1f5f9; text-align: left; padding: 6px 8px; font-size: 10px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #e2e8f0; }}
-            .stock-table td {{ padding: 5px 8px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }}
-            .stock-table tr:hover td {{ background: #f8fafc; }}
-            .stock-table tr:last-child td {{ border-bottom: none; }}
-            .stock-table a {{ text-decoration: none; color: #2563eb; font-weight: 700; }}
-            .stock-table .price {{ font-size: 13px; font-weight: 800; color: #0f172a; }}
-            .stock-table .change {{ font-weight: 700; }}
-            .stock-table .volx {{ font-weight: 700; font-size: 11px; padding: 2px 6px; border-radius: 4px; display: inline-block; }}
-            .stock-table .vol-raw {{ font-size: 10px; color: #475569; }}
-            .stock-table .tag {{ font-size: 9px; padding: 2px 5px; border-radius: 3px; font-weight: bold; text-transform: uppercase; }}
+            .sector-block {{ background: white !important; border: 1px solid #e2e8f0 !important; border-radius: 12px !important; padding: 12px 14px !important; margin-bottom: 12px !important; }}
+            .sector-header {{ display:flex !important; justify-content:space-between !important; align-items:center !important; margin-bottom: 6px !important; }}
+            .sector-header h3 {{ margin:0 !important; font-size:16px !important; font-weight:700 !important; color: #0f172a !important; }}
+            .sector-ret {{ font-size:15px !important; font-weight:700 !important; }}
+            .vol-hint {{ font-size: 10px !important; color: #64748b !important; margin: 0 0 6px 0 !important; font-style: italic !important; }}
             
-            .stock-table th:nth-child(1), .stock-table td:nth-child(1) {{ width: 80px; }}
-            .stock-table th:nth-child(2), .stock-table td:nth-child(2) {{ width: 85px; }}
-            .stock-table th:nth-child(3), .stock-table td:nth-child(3) {{ width: 65px; }}
-            .stock-table th:nth-child(4), .stock-table td:nth-child(4) {{ width: 70px; }}
-            .stock-table th:nth-child(5), .stock-table td:nth-child(5) {{ width: 65px; }}
-            .stock-table th:nth-child(6), .stock-table td:nth-child(6) {{ width: 65px; }}
-            .stock-table th:nth-child(7), .stock-table td:nth-child(7) {{ width: 70px; }}
+            /* Force table reset - kills theme defaults */
+            .swipe-table {{ overflow-x: auto !important; -webkit-overflow-scrolling: touch !important; margin: 0 !important; padding: 0 !important; }}
+            .swipe-table table {{ 
+                width: 100% !important; 
+                border-collapse: collapse !important; 
+                border-spacing: 0 !important;
+                font-size: 12px !important; 
+                font-family: 'Inter', -apple-system, sans-serif !important;
+                margin: 0 !important;
+            }}
+            .swipe-table table * {{ 
+                margin: 0 !important; 
+                padding: 0 !important; 
+                border: none !important; 
+                box-shadow: none !important;
+                background: transparent !important;
+            }}
+            .swipe-table thead {{ display: table-header-group !important; }}
+            .swipe-table th {{ 
+                background: #f1f5f9 !important; 
+                text-align: left !important; 
+                padding: 6px 8px !important; 
+                font-size: 10px !important; 
+                font-weight: 700 !important; 
+                color: #475569 !important; 
+                text-transform: uppercase !important; 
+                letter-spacing: 0.5px !important; 
+                border-bottom: 2px solid #e2e8f0 !important;
+                white-space: nowrap !important;
+            }}
+            .swipe-table td {{ 
+                padding: 5px 8px !important; 
+                border-bottom: 1px solid #f1f5f9 !important; 
+                vertical-align: middle !important;
+                font-size: 12px !important;
+                color: #334155 !important;
+            }}
+            .swipe-table tr:hover td {{ background: #f8fafc !important; }}
+            .swipe-table tr:last-child td {{ border-bottom: none !important; }}
+            .swipe-table a {{ 
+                text-decoration: none !important; 
+                color: #2563eb !important; 
+                font-weight: 700 !important; 
+                font-size: 12px !important;
+            }}
+            .swipe-table .price {{ font-size: 13px !important; font-weight: 800 !important; color: #0f172a !important; }}
+            .swipe-table .change {{ font-weight: 700 !important; font-size: 12px !important; }}
+            .swipe-table .volx {{ 
+                font-weight: 700 !important; 
+                font-size: 11px !important; 
+                padding: 2px 6px !important; 
+                border-radius: 4px !important; 
+                display: inline-block !important;
+                white-space: nowrap !important;
+            }}
+            .swipe-table .vol-raw {{ font-size: 10px !important; color: #475569 !important; }}
+            .swipe-table .tag {{ 
+                font-size: 9px !important; 
+                padding: 2px 5px !important; 
+                border-radius: 3px !important; 
+                font-weight: bold !important; 
+                text-transform: uppercase !important;
+                white-space: nowrap !important;
+            }}
             
-            /* MOBILE: Horizontal scroll wrapper */
             @media (max-width: 640px) {{
-                .table-wrap {{ overflow-x: auto; -webkit-overflow-scrolling: touch; }}
-                .stock-table {{ min-width: 520px; font-size: 11px; }}
-                .stock-table th, .stock-table td {{ padding: 4px 6px; }}
-                .stock-table .price {{ font-size: 12px; }}
-                .stock-table a {{ font-size: 11px; }}
+                .swipe-table {{ overflow-x: auto !important; }}
+                .swipe-table table {{ min-width: 520px !important; font-size: 11px !important; }}
+                .swipe-table th, .swipe-table td {{ padding: 4px 6px !important; }}
+                .swipe-table .price {{ font-size: 12px !important; }}
+                .swipe-table a {{ font-size: 11px !important; }}
             }}
         </style>
 
-        <div style="background:#f8fafc; padding:14px; border-radius:12px; border:1px solid #e2e8f0; margin-bottom:14px;">
-            <h2 style="margin:0 0 8px 0; font-size:16px;">📊 Valuation Analytics</h2>
-            <div style="display:flex; gap:20px; margin:8px 0; background:white; padding:10px 14px; border-radius:8px;">
-                <div><small style="font-size:10px; color:#64748b;">CURRENT PE</small><br><b style="font-size:15px;">{pe}</b></div>
-                <div><small style="font-size:10px; color:#64748b;">1Y FORECAST</small><br><b style="font-size:15px; color:#15803d;">{forecast}</b></div>
+        <div class="val-box">
+            <h2>📊 Valuation Analytics</h2>
+            <div class="val-metrics">
+                <div><small style="font-size:10px; color:#64748b;">CURRENT PE</small><br><b>{pe}</b></div>
+                <div><small style="font-size:10px; color:#64748b;">1Y FORECAST</small><br><b class="green">{forecast}</b></div>
             </div>
-            <p style="font-size:13px; margin:6px 0; line-height:1.5;">{summary}</p>
+            <p>{summary}</p>
             {v_table}
         </div>
         """
@@ -288,8 +337,8 @@ class ReportBuilder:
                 </div>
                 <div class="vol-hint">💡 VolumeX = 20 Day Avg Volume Multiplier</div>
                 
-                <div class="table-wrap">
-                <table class="stock-table">
+                <div class="swipe-table">
+                <table>
                     <thead>
                         <tr>
                             <th>Ticker</th>
@@ -313,23 +362,23 @@ class ReportBuilder:
                 
                 vol_val = float(s['vol_ratio'])
                 if vol_val > 2.5:
-                    volx_style = "background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa;"
+                    volx_style = "background: #fff7ed !important; color: #c2410c !important; border: 1px solid #fed7aa !important;"
                     volx_label = f"🔥 {vol_val:.2f}x"
                 elif vol_val > 1.5:
-                    volx_style = "color: #b45309;"
+                    volx_style = "color: #b45309 !important;"
                     volx_label = f"📈 {vol_val:.2f}x"
                 else:
-                    volx_style = "color: #475569;"
+                    volx_style = "color: #475569 !important;"
                     volx_label = f"{vol_val:.2f}x"
                 
-                rsi_tag = '<span class="tag" style="background:#fee2e2; color:#b91c1c;">Overbought</span>' if s['rsi'] > 70 else \
-                          ('<span class="tag" style="background:#dcfce7; color:#15803d;">Oversold</span>' if s['rsi'] < 30 else '—')
+                rsi_tag = '<span class="tag" style="background:#fee2e2 !important; color:#b91c1c !important;">Overbought</span>' if s['rsi'] > 70 else \
+                          ('<span class="tag" style="background:#dcfce7 !important; color:#15803d !important;">Oversold</span>' if s['rsi'] < 30 else '—')
 
                 html += f"""
                         <tr>
                             <td><a href="{ext_url}" target="_blank">{t}</a></td>
                             <td class="price">₹{s['price']:,.2f}</td>
-                            <td class="change" style="color:{'#15803d' if s['change'] > 0 else '#dc2626'}">{s['change']:+.2f}%</td>
+                            <td class="change" style="color:{'#15803d' if s['change'] > 0 else '#dc2626'} !important;">{s['change']:+.2f}%</td>
                             <td><span class="volx" style="{volx_style}">{volx_label}</span></td>
                             <td class="vol-raw">{t_vol}</td>
                             <td class="vol-raw">{a_vol}</td>
