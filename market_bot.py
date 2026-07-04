@@ -221,37 +221,34 @@ class ReportBuilder:
         html = f"""
         <style>
             .market-card {{ font-family: 'Inter', sans-serif; max-width: 950px; margin: auto; color: #1e293b; line-height: 1.4; }}
-            .valuation-table {{ width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 13px; }}
+            .valuation-table {{ width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }}
             .valuation-table th {{ background: #f1f5f9; text-align: left; padding: 8px 10px; border-bottom: 2px solid #e2e8f0; }}
+            
             .sector-block {{ background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }}
-            .sector-header {{ display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #f1f5f9; padding-bottom:6px; margin-bottom:6px; }}
+            .sector-header {{ display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px; }}
             .sector-header h3 {{ margin:0; font-size:16px; font-weight:700; }}
             .sector-ret {{ font-size:15px; font-weight:700; }}
             .vol-hint {{ font-size: 10px; color: #94a3b8; margin: 0 0 6px 0; font-style: italic; }}
             
-            .stock-row {{ 
-                display: grid; 
-                grid-template-columns: 90px 90px 65px 90px 70px 110px 80px; 
-                gap: 6px; 
-                align-items: center; 
-                padding: 5px 8px; 
-                border-bottom: 1px solid #f1f5f9; 
-                font-size: 12px; 
-            }}
-            .stock-row:last-child {{ border-bottom: none; }}
-            .stock-row:hover {{ background: #f8fafc; }}
-            .stock-row b {{ font-weight: 700; }}
-            .stock-row a {{ text-decoration: none; color: #3b82f6; font-weight: 700; }}
-            .stock-row .price {{ font-size: 13px; font-weight: 800; color: #1e293b; }}
-            .stock-row .change {{ font-weight: 700; font-size: 12px; }}
-            .stock-row .volx {{ font-weight: 700; font-size: 11px; padding: 1px 5px; border-radius: 4px; display: inline-block; }}
-            .stock-row .vol-raw {{ font-size: 10px; color: #94a3b8; }}
-            .stock-row .tag {{ font-size: 9px; padding: 1px 4px; border-radius: 3px; font-weight: bold; text-transform: uppercase; }}
+            .stock-table {{ width: 100%; border-collapse: collapse; font-size: 12px; }}
+            .stock-table th {{ background: #f8fafc; text-align: left; padding: 6px 8px; font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #e2e8f0; }}
+            .stock-table td {{ padding: 5px 8px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }}
+            .stock-table tr:hover td {{ background: #f8fafc; }}
+            .stock-table tr:last-child td {{ border-bottom: none; }}
+            .stock-table a {{ text-decoration: none; color: #3b82f6; font-weight: 700; }}
+            .stock-table .price {{ font-size: 13px; font-weight: 800; color: #1e293b; }}
+            .stock-table .change {{ font-weight: 700; }}
+            .stock-table .volx {{ font-weight: 700; font-size: 11px; padding: 2px 6px; border-radius: 4px; display: inline-block; }}
+            .stock-table .vol-raw {{ font-size: 10px; color: #94a3b8; }}
+            .stock-table .tag {{ font-size: 9px; padding: 1px 4px; border-radius: 3px; font-weight: bold; text-transform: uppercase; }}
             
-            @media (max-width: 640px) {{
-                .stock-row {{ grid-template-columns: 70px 75px 55px 70px 55px 90px 60px; font-size: 11px; gap: 4px; padding: 4px 5px; }}
-                .stock-row .price {{ font-size: 12px; }}
-            }}
+            .stock-table th:nth-child(1), .stock-table td:nth-child(1) {{ width: 80px; }}
+            .stock-table th:nth-child(2), .stock-table td:nth-child(2) {{ width: 90px; }}
+            .stock-table th:nth-child(3), .stock-table td:nth-child(3) {{ width: 65px; }}
+            .stock-table th:nth-child(4), .stock-table td:nth-child(4) {{ width: 75px; }}
+            .stock-table th:nth-child(5), .stock-table td:nth-child(5) {{ width: 70px; }}
+            .stock-table th:nth-child(6), .stock-table td:nth-child(6) {{ width: 70px; }}
+            .stock-table th:nth-child(7), .stock-table td:nth-child(7) {{ width: 70px; }}
         </style>
 
         <div style="background:#f8fafc; padding:14px; border-radius:12px; border:1px solid #e2e8f0; margin-bottom:14px;">
@@ -282,16 +279,19 @@ class ReportBuilder:
                 </div>
                 <div class="vol-hint">💡 VolumeX = 20 Day Avg Volume Multiplier</div>
                 
-                <!-- Header Row -->
-                <div class="stock-row" style="background:#f8fafc; font-weight:700; font-size:10px; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; border-radius:4px; margin-bottom:3px;">
-                    <div>Ticker</div>
-                    <div>Price</div>
-                    <div>Change</div>
-                    <div>VolumeX</div>
-                    <div>Today Vol</div>
-                    <div>Avg Vol</div>
-                    <div>Signal</div>
-                </div>
+                <table class="stock-table">
+                    <thead>
+                        <tr>
+                            <th>Ticker</th>
+                            <th>Price</th>
+                            <th>Change</th>
+                            <th>VolumeX</th>
+                            <th>Today Vol</th>
+                            <th>Avg Vol</th>
+                            <th>Signal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
             """
             
             for s in sorted_stocks:
@@ -313,20 +313,23 @@ class ReportBuilder:
                     volx_label = f"{vol_val:.2f}x"
                 
                 rsi_tag = '<span class="tag" style="background:#fee2e2; color:#ef4444;">Overbought</span>' if s['rsi'] > 70 else \
-                          ('<span class="tag" style="background:#dcfce7; color:#22c55e;">Oversold</span>' if s['rsi'] < 30 else '<span style="color:#cbd5e1;">—</span>')
+                          ('<span class="tag" style="background:#dcfce7; color:#22c55e;">Oversold</span>' if s['rsi'] < 30 else '—')
 
                 html += f"""
-                <div class="stock-row">
-                    <div><a href="{ext_url}" target="_blank">{t}</a></div>
-                    <div class="price">₹{s['price']:,.2f}</div>
-                    <div class="change" style="color:{'#16a34a' if s['change'] > 0 else '#dc2626'}">{s['change']:+.2f}%</div>
-                    <div><span class="volx" style="{volx_style}">{volx_label}</span></div>
-                    <div class="vol-raw">{t_vol}</div>
-                    <div class="vol-raw">{a_vol}</div>
-                    <div>{rsi_tag}</div>
-                </div>"""
+                        <tr>
+                            <td><a href="{ext_url}" target="_blank">{t}</a></td>
+                            <td class="price">₹{s['price']:,.2f}</td>
+                            <td class="change" style="color:{'#16a34a' if s['change'] > 0 else '#dc2626'}">{s['change']:+.2f}%</td>
+                            <td><span class="volx" style="{volx_style}">{volx_label}</span></td>
+                            <td class="vol-raw">{t_vol}</td>
+                            <td class="vol-raw">{a_vol}</td>
+                            <td>{rsi_tag}</td>
+                        </tr>"""
             
-            html += "</div>"
+            html += """
+                    </tbody>
+                </table>
+            </div>"""
         return html
         
 #############################################
