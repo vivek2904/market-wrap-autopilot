@@ -133,17 +133,24 @@ class HeroCardBuilder:
         else: return "Bears in Control 🔻 Sellers Dominate the Session"
 
     @staticmethod
+    def _safe_scalar(val):
+        """Extract scalar from Series or return float directly."""
+        if hasattr(val, 'item'):
+            return float(val.item())
+        return float(val)
+
+    @staticmethod
     def build_hero_card(nifty_data, change):
         """Creates the professional Hero Dashboard with color-coded Highs/Lows."""
         today = nifty_data.iloc[-1]
         yesterday = nifty_data.iloc[-2]
         
         # Explicit scalar conversion for formatting
-        curr_close = float(today['Close'])
-        curr_open = float(today['Open'])
-        curr_high = float(today['High'])
-        curr_low = float(today['Low'])
-        prev_close = float(yesterday['Close'])
+        curr_close = HeroCardBuilder._safe_scalar(today['Close'])
+        curr_open = HeroCardBuilder._safe_scalar(today['Open'])
+        curr_high = HeroCardBuilder._safe_scalar(today['High'])
+        curr_low = HeroCardBuilder._safe_scalar(today['Low'])
+        prev_close = HeroCardBuilder._safe_scalar(yesterday['Close'])
         
         # Contextual Color Logic
         brand_color = "#22c55e" if change > 0 else "#ef4444"
@@ -332,15 +339,21 @@ def main():
     report_builder = ReportBuilder()
     publisher = WordPressPublisher()
     
-    # 2. Fetch Nifty 50 Data & FORCE FLOAT
+    # Helper for scalar extraction
+    def safe_scalar(val):
+        if hasattr(val, 'item'):
+            return float(val.item())
+        return float(val)
+    
+    # 2. Fetch Nifty 50 Data
     nifty_raw = yf.download('^NSEI', period='5d', interval='1d', auto_adjust=True)
     if nifty_raw.empty:
         print("❌ Error: Could not fetch Nifty data.")
         return
 
-    # Using float() here is a double-insurance against the Format Error
-    n_close_today = float(nifty_raw['Close'].iloc[-1])
-    n_close_prev = float(nifty_raw['Close'].iloc[-2])
+    # Safe scalar extraction
+    n_close_today = safe_scalar(nifty_raw['Close'].iloc[-1])
+    n_close_prev = safe_scalar(nifty_raw['Close'].iloc[-2])
     n_change_pct = float(((n_close_today / n_close_prev) - 1) * 100)
     
     # 3. Fetch Index Data (Clean empty columns)
