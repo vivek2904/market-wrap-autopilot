@@ -1,23 +1,47 @@
 import os
+import re
 import requests
 import base64
+import io
 import pandas as pd
 import yfinance as yf
 import pandas_ta as ta
 from datetime import datetime
 from bs4 import BeautifulSoup
-import io
-import re
 
 #############################################
-## MODULE 1: CONFIGURATION & WATCHLIST
+## MODULE 1: CONFIGURATION & US WATCHLIST
 #############################################
 
 WP_USER = os.environ.get('WP_USER')
 WP_PASS = os.environ.get('WP_PASS')
 WP_URL = os.environ.get('WP_URL')
-CATEGORY_ID = 12
+CATEGORY_ID = 12 
 
+# Main US Indices
+MAIN_INDICES = {
+    'S&P 500': '^GSPC',
+    'Nasdaq 100': '^NDX',
+    'Dow Jones': '^DJI',
+    'CBOE VIX': '^VIX'
+}
+
+# Sector ETFs
+SECTOR_INDICES = {
+    'Technology': 'XLK',
+    'Health Care': 'XLV',
+    'Financials': 'XLF',
+    'Cons. Discretionary': 'XLY',
+    'Communication': 'XLC',
+    'Industrials': 'XLI',
+    'Cons. Staples': 'XLP',
+    'Energy': 'XLE',
+    'Materials': 'XLB',
+    'Real Estate': 'XLRE',
+    'Utilities': 'XLU'
+}
+
+# Complete US Sector Watchlist (Preserved)
 WATCHLIST = {
     'Technology': ['Apple (AAPL)', 'Microsoft (MSFT)', 'Nvidia (NVDA)', 'Broadcom (AVGO)', 'Oracle (ORCL)', 'Adobe (ADBE)', 'Cisco (CSCO)', 'Salesforce (CRM)', 'AMD (AMD)', 'Qualcomm (QCOM)'],
     'Financials': ['JPMorgan Chase (JPM)', 'Visa (V)', 'Mastercard (MA)', 'Bank of America (BAC)', 'Goldman Sachs (GS)', 'Morgan Stanley (MS)', 'Wells Fargo (WFC)', 'BlackRock (BLK)', 'American Express (AXP)', 'Citigroup (C)'],
@@ -32,15 +56,12 @@ WATCHLIST = {
     'Utilities': ['NextEra Energy (NEE)', 'Southern Co (SO)', 'Duke Energy (DUK)', 'American Electric (AEP)', 'Sempra (SRE)', 'Dominion Energy (D)', 'Exelon (EXC)', 'PG&E (PCG)', 'Xcel Energy (XEL)', 'Consolidated Edison (ED)']
 }
 
-INDEX_MAP = {
-    '^GSPC': 'S&P 500', 'XLK': 'Technology', 'XLV': 'Health Care', 'XLF': 'Financials', 
-    'XLY': 'Cons. Discretionary', 'XLC': 'Communication', 'XLI': 'Industrials', 
-    'XLP': 'Cons. Staples', 'XLE': 'Energy', 'XLB': 'Materials', 'XLRE': 'Real Estate', 'XLU': 'Utilities'
-}
-
 def get_ticker(s):
     match = re.search(r'\((.*?)\)', s)
     return match.group(1) if match else s
+
+def get_name(s):
+    return s.split('(')[0].strip()
 
 ALL_TICKERS = list(set([get_ticker(s) for sublist in WATCHLIST.values() for s in sublist]))
 
@@ -50,247 +71,480 @@ ALL_TICKERS = list(set([get_ticker(s) for sublist in WATCHLIST.values() for s in
 
 class MarketDataEngine:
     @staticmethod
-    def get_valuation():
-        url = "https://worldperatio.com/area/united-states/"
-        headers = {'User-Agent': 'Mozilla/5.0'}
-        try:
-            res = requests.get(url, headers=headers, timeout=15)
-            soup = BeautifulSoup(res.text, 'html.parser')
-            summary = " ".join([p.get_text() for p in soup.find_all('p', limit=3) if len(p.get_text()) > 50])
-            tables = pd.read_html(io.StringIO(res.text))
-            pe, forward_ret, table_html = "26.94", "3.26%", ""
-            
-            for df in tables:
-                if 'Period' in df.columns and any('Average P/E' in col for col in df.columns):
-                    pe_cols = [c for c in df.columns if "vs Current P/E" in str(c)]
-                    if pe_cols:
-                        match = re.search(r'\((.*?)\)', str(pe_cols[0]))
-                        if match: 
-                            pe = match.group(1)
-                    table_html = df[['Period', 'Average P/E (μ)', 'Std Dev (σ)', 'Valuation']].head(5).to_html(index=False, border=0, classes='valuation-table')
-                if not df.empty and '1 Years' in str(df.iloc[:, 0].values):
-                    forward_ret = f"{df.iloc[0, 6]}%"
-            return summary, pe, forward_ret, table_html
-        except Exception as e: 
-            return "US Market Valuation Analysis.", "26.94", "3.26%", ""
+    def format_vol(n):
+        """Formats numbers into US Million/Billion notation."""
+        if pd.isna(n) or n is None or n == 0: return "-"
+        if n >= 1e9: return f"{n/1e9:.2f}B"
+        if n >= 1e6: return f"{n/1e6:.1f}M"
+        if n >= 1e3: return f"{n/1e3:.0f}K"
+        return f"{int(n):,}"
 
     @staticmethod
-    def get_stock_stats():
-        data = yf.download(ALL_TICKERS, period="60d", interval="1d", auto_adjust=True, threads=True)
-        results = {}
-        for t in ALL_TICKERS:
+    def get_valuation():
+        """Fetches US Valuation Data."""
+        url = "https://worldperatio.com/area/united-states/"
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        data = {'pe': '26.9', 'status': 'Fair', 'avg_1y': '25.4', 'avg_5y': '24.1', 'avg_10y': '21.8'}
+        try:
+            res = requests.get(url, headers=headers, timeout=10)
+            if res.status_code == 200:
+                soup = BeautifulSoup(res.content, 'html.parser')
+                text = soup.get_text()
+                
+                pe_match = re.search(r'P/E Ratio:\s*([\d\.]+)', text)
+                if pe_match: data['pe'] = pe_match.group(1)
+                
+                status_match = re.search(r'considered\s+([A-Za-z]+)', text, re.I)
+                if status_match: data['status'] = status_match.group(1).capitalize()
+                
+                y1 = re.search(r'1Y Average:\s*([\d\.]+)', text)
+                if y1: data['avg_1y'] = y1.group(1)
+                y5 = re.search(r'Last 5Y.*?([\d\.]+)', text, re.DOTALL)
+                if y5: data['avg_5y'] = y5.group(1)
+                y10 = re.search(r'Last 10Y.*?([\d\.]+)', text, re.DOTALL)
+                if y10: data['avg_10y'] = y10.group(1)
+        except Exception as e:
+            print(f"Valuation notice: {e}")
+        return data
+
+    @staticmethod
+    def fetch_market_overview():
+        # 1. Main Benchmarks
+        bench_data = []
+        for name, ticker in MAIN_INDICES.items():
             try:
-                if isinstance(data.columns, pd.MultiIndex):
-                    subset = data.iloc[:, data.columns.get_level_values(1) == t]
-                    subset.columns = subset.columns.get_level_values(0)
-                else:
-                    subset = data
-                
-                prices = subset['Close'].dropna()
-                vol = subset['Volume'].dropna()
-                
-                if len(prices) < 20: 
-                    continue
-                
-                avg_vol_20 = vol.iloc[-21:-1].mean()
-                curr_vol = vol.iloc[-1]
-                vol_ratio = curr_vol / avg_vol_20 if avg_vol_20 > 0 else 1.0
-                
-                results[t] = {
-                    'price': float(prices.iloc[-1]),
-                    'change': float(((prices.iloc[-1] / prices.iloc[-2]) - 1) * 100),
-                    'rsi': float(ta.rsi(prices, length=14).iloc[-1]),
-                    'vol_ratio': float(vol_ratio),
-                    'curr_vol': float(curr_vol),
-                    'avg_vol': float(avg_vol_20)
-                }
-            except Exception: 
-                continue
-        return results
+                t = yf.Ticker(ticker)
+                hist = t.history(period="5d")
+                if len(hist) >= 2:
+                    curr = hist['Close'].iloc[-1]
+                    prev = hist['Close'].iloc[-2]
+                    change = curr - prev
+                    pct = (change / prev) * 100
+                    bench_data.append({
+                        'name': name,
+                        'price': f"{curr:,.2f}",
+                        'change': change,
+                        'pct_change': pct
+                    })
+            except Exception: continue
+
+        # 2. Sector Returns
+        sector_data = []
+        for name, ticker in SECTOR_INDICES.items():
+            try:
+                t = yf.Ticker(ticker)
+                hist = t.history(period="5d")
+                if len(hist) >= 2:
+                    curr = hist['Close'].iloc[-1]
+                    prev = hist['Close'].iloc[-2]
+                    pct = ((curr - prev) / prev) * 100
+                    sector_data.append({'name': name, 'pct_change': pct})
+            except Exception: continue
+
+        # Sort sectors by highest performance
+        sector_data = sorted(sector_data, key=lambda x: x['pct_change'], reverse=True)
+
+        # 3. Stock Watchlist Stats
+        stock_raw = yf.download(ALL_TICKERS, period="30d", interval="1d", auto_adjust=True, threads=True)
+        stock_stats = {}
+        for cat, items in WATCHLIST.items():
+            stock_stats[cat] = []
+            for item in items:
+                t = get_ticker(item)
+                c_name = get_name(item)
+                try:
+                    if isinstance(stock_raw.columns, pd.MultiIndex):
+                        subset = stock_raw.iloc[:, stock_raw.columns.get_level_values(1) == t]
+                        subset.columns = subset.columns.get_level_values(0)
+                    else:
+                        subset = stock_raw
+
+                    prices = subset['Close'].dropna()
+                    vol = subset['Volume'].dropna()
+                    if len(prices) < 15: continue
+
+                    curr_p = prices.iloc[-1]
+                    prev_p = prices.iloc[-2]
+                    chg = curr_p - prev_p
+                    pct_chg = (chg / prev_p) * 100
+
+                    curr_v = vol.iloc[-1]
+                    avg_v = vol.iloc[-21:-1].mean()
+                    is_spike = curr_v > (avg_v * 1.5) if avg_v > 0 else False
+
+                    stock_stats[cat].append({
+                        'name': c_name,
+                        'ticker': t,
+                        'price': curr_p,
+                        'change': chg,
+                        'pct_change': pct_chg,
+                        'volume': curr_v,
+                        'vol_spike': is_spike
+                    })
+                except Exception: continue
+
+        return bench_data, sector_data, stock_stats
 
 #############################################
-## MODULE 3: SENSATIONAL UI BUILDER
+## MODULE 3: PRECISE UI BUILDER (MATCHING REFERENCE)
 #############################################
 
 class UIBuilder:
     @staticmethod
-    def format_vol(n):
-        """Formats numbers into US Million/Billion system for professional readability."""
-        if n >= 1e9: return f"{n/1e9:.2f}B"
-        if n >= 1e6: return f"{n/1e6:.1f}M"
-        if n >= 1e3: return f"{n/1e3:.0f}K"
-        return f"{n:.0f}"
-
-    @staticmethod
-    def build_hero(gspc_data, change, vix):
-        """Creates the high-impact dashboard header with the VIX Fear Gauge."""
-        curr = float(gspc_data['Close'].iloc[-1])
-        prev = float(gspc_data['Close'].iloc[-2])
-        color = "#22c55e" if change > 0 else "#ef4444"
-        vix_color = "#ef4444" if vix > 20 else "#22c55e"
+    def generate_html(benchmarks, sectors, watchlist, val_data):
+        today_str = datetime.today().strftime('%d %B %Y')
         
-        return f"""
-        <div style="background: linear-gradient(135deg, #020617 0%, #0f172a 100%); color: white; padding: 45px; border-radius: 24px; font-family: 'Inter', sans-serif; margin-bottom: 30px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3);">
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 30px;">
-                <div>
-                    <span style="opacity: 0.6; font-weight: 600; text-transform: uppercase; letter-spacing: 2px; font-size: 14px;">S&P 500 Index Baseline</span>
-                    <h1 style="font-size: 72px; margin: 10px 0; font-weight: 900; line-height: 1;">{curr:,.2f}</h1>
-                    <div style="font-size: 28px; font-weight: 800; color: {color};">
-                        {'▲' if change > 0 else '▼'} {abs(change):.2f}% 
-                        <span style="font-size: 18px; opacity: 0.7; color: white; margin-left: 10px;">({curr-prev:+.2f} pts)</span>
-                    </div>
-                </div>
-                <div style="text-align: right; background: rgba(255,255,255,0.05); padding: 25px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); min-width: 200px;">
-                    <small style="opacity:0.6; text-transform:uppercase; font-weight: 700; letter-spacing: 1px;">VIX Fear Index</small><br>
-                    <b style="font-size: 42px; color: {vix_color}; line-height: 1;">{vix:.2f}</b><br>
-                    <div style="margin-top: 10px; font-weight: 600; font-size: 14px; color: {vix_color};">
-                        {'⚠️ High Volatility' if vix > 20 else '✅ Market Calm'}
-                    </div>
+        # Valuation badge styling
+        status_lower = val_data['status'].lower()
+        val_badge_cls = 'badge-green' if 'cheap' in status_lower or 'undervalued' in status_lower else ('badge-red' if 'expensive' in status_lower or 'overvalued' in status_lower else 'badge-blue')
+
+        html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wall Street Wrap</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+    * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+    body {{
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background-color: #f8fafc;
+        color: #0f172a;
+        line-height: 1.5;
+        padding: 24px 12px;
+        font-variant-numeric: tabular-nums;
+    }}
+    .container {{ max-width: 1100px; margin: 0 auto; }}
+
+    /* HEADER BANNER */
+    .header {{
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        color: #ffffff;
+        padding: 28px 32px;
+        border-radius: 16px;
+        margin-bottom: 24px;
+        box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 16px;
+    }}
+    .header-title h1 {{ font-size: 26px; font-weight: 800; letter-spacing: -0.5px; color: #ffffff; }}
+    .header-title p {{ color: #94a3b8; font-size: 14px; margin-top: 4px; font-weight: 500; }}
+    .header-date {{
+        background: rgba(255,255,255,0.1);
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+        border: 1px solid rgba(255,255,255,0.15);
+    }}
+
+    /* CARDS */
+    .card {{
+        background: #ffffff;
+        border-radius: 14px;
+        padding: 24px;
+        margin-bottom: 24px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }}
+    .section-title {{
+        font-size: 18px;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 2px solid #f1f5f9;
+        padding-bottom: 10px;
+    }}
+
+    /* BENCHMARKS GRID */
+    .indices-grid {{
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 16px;
+    }}
+    .index-card {{
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 18px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }}
+    .index-name {{ font-size: 13px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }}
+    .index-price {{ font-size: 24px; font-weight: 800; color: #0f172a; margin: 8px 0 4px 0; }}
+    .change-indicator {{ font-size: 13px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; }}
+
+    /* COLOR UTILITIES */
+    .text-green {{ color: #16a34a; }}
+    .text-red {{ color: #dc2626; }}
+    .bg-green {{ background-color: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }}
+    .bg-red {{ background-color: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }}
+
+    /* VALUATION BAR */
+    .valuation-grid {{
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 16px;
+        background: #f1f5f9;
+        padding: 18px;
+        border-radius: 12px;
+    }}
+    .val-item {{ display: flex; flex-direction: column; }}
+    .val-label {{ font-size: 12px; color: #64748b; font-weight: 600; margin-bottom: 4px; }}
+    .val-val {{ font-size: 18px; font-weight: 700; color: #0f172a; }}
+
+    /* SECTOR PILLS */
+    .sector-grid {{
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 12px;
+    }}
+    .sector-pill {{
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        padding: 12px 16px;
+        border-radius: 10px;
+    }}
+    .sector-name {{ font-size: 14px; font-weight: 600; color: #334155; }}
+
+    /* TABLES & ALIGNMENT */
+    .table-container {{ width: 100%; overflow-x: auto; }}
+    table {{ width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 8px; }}
+    th {{
+        background-color: #f8fafc;
+        color: #475569;
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding: 12px 16px;
+        border-bottom: 2px solid #e2e8f0;
+    }}
+    td {{
+        padding: 14px 16px;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: 14px;
+        color: #1e293b;
+        vertical-align: middle;
+    }}
+    tr:last-child td {{ border-bottom: none; }}
+    tr:hover td {{ background-color: #f8fafc; }}
+
+    .text-left {{ text-align: left; }}
+    .text-right {{ text-align: right; }}
+
+    /* BADGES */
+    .badge {{
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.3px;
+        text-transform: uppercase;
+    }}
+    .badge-vol {{ background-color: #fef3c7; color: #92400e; border: 1px solid #fde68a; margin-left: 8px; }}
+    .badge-green {{ background-color: #dcfce7; color: #15803d; }}
+    .badge-red {{ background-color: #fee2e2; color: #b91c1c; }}
+    .badge-blue {{ background-color: #dbeafe; color: #1e40af; }}
+
+    .symbol-cell {{ display: flex; align-items: center; font-weight: 700; color: #0f172a; }}
+    .sub-symbol {{ font-size: 11px; color: #94a3b8; font-weight: 500; margin-left: 6px; }}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+    <!-- HEADER -->
+    <div class="header">
+        <div class="header-title">
+            <h1>Wall Street Market Wrap</h1>
+            <p>US Equity Market Intelligence & Sector Performance</p>
+        </div>
+        <div class="header-date">{today_str}</div>
+    </div>
+
+    <!-- MAIN BENCHMARKS -->
+    <div class="card">
+        <div class="section-title">Key US Benchmark Indices</div>
+        <div class="indices-grid">
+"""
+        for b in benchmarks:
+            is_pos = b['pct_change'] >= 0
+            color_cls = "text-green" if is_pos else "text-red"
+            arrow = "▲" if is_pos else "▼"
+            sign = "+" if is_pos else ""
+            
+            html += f"""
+            <div class="index-card">
+                <div class="index-name">{b['name']}</div>
+                <div class="index-price">{b['price']}</div>
+                <div class="change-indicator {color_cls}">
+                    {arrow} {sign}{b['change']:,.2f} ({sign}{b['pct_change']:.2f}%)
                 </div>
             </div>
+"""
+
+        html += f"""
         </div>
-        """
+    </div>
 
-    @staticmethod
-    def build_body(stock_data, sector_returns, val_data):
-        """Builds the main report body with large fonts and institutional volume logic."""
-        summary, pe, forward, table = val_data
-        
-        html = f"""
-        <style>
-            .valuation-table {{ width: 100%; border-collapse: collapse; margin-top: 20px; font-family: 'Inter', sans-serif; font-size: 15px; }}
-            .valuation-table th {{ background: #f8fafc; padding: 15px; border: 1px solid #e2e8f0; text-align: left; font-weight: 800; }}
-            .valuation-table td {{ padding: 15px; border: 1px solid #e2e8f0; color: #475569; }}
-            
-            .sector-block {{ background: white; border: 1px solid #e2e8f0; border-radius: 24px; padding: 30px; margin-bottom: 35px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }}
-            .stock-grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; margin-top: 25px; }}
-            
-            .stock-card {{ border: 1px solid #f1f5f9; padding: 22px; border-radius: 18px; background:#fff; transition: 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }}
-            .stock-card:hover {{ transform: translateY(-5px); box-shadow: 0 12px 20px -5px rgba(0,0,0,0.1); border-color: #3b82f6; }}
-            
-            .company-name {{ font-size: 11px; color: #64748b; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 4px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }}
-            .ticker-label {{ font-size: 22px; font-weight: 900; color: #1e293b; line-height: 1.2; }}
-            .price-main {{ font-size: 32px; font-weight: 900; color: #0f172a; margin: 10px 0; letter-spacing: -1px; }}
-            .change-text {{ font-size: 18px; font-weight: 800; }}
-            
-            .vol-badge {{ margin-top: 15px; padding: 12px; border-radius: 12px; border: 1px solid #f1f5f9; }}
-            .vol-x-val {{ font-size: 15px; font-weight: 800; display: block; margin-bottom: 4px; }}
-            .vol-raw-stats {{ font-size: 12px; color: #64748b; line-height: 1.5; font-weight: 500; }}
-        </style>
-
-        <div style="background: #eff6ff; border-left: 6px solid #3b82f6; padding: 20px; border-radius: 12px; margin-bottom: 35px; font-family: 'Inter', sans-serif;">
-            <strong style="color: #1e40af; font-size: 18px; display: block; margin-bottom: 5px;">📊 Institutional Volume Radar</strong>
-            <span style="color: #1e3a8a; font-size: 15px; line-height: 1.6;">
-                <strong>VolX (Volume Multiplier):</strong> Measures current session activity vs. the 20-day average. 
-                Spikes above 2.0x (🔥) signal high-conviction institutional accumulation or distribution.
-            </span>
+    <!-- US VALUATION METRICS -->
+    <div class="card">
+        <div class="section-title">
+            US Market Valuation (S&P 500 P/E Analysis)
+            <span class="badge {val_badge_cls}">{val_data['status']}</span>
         </div>
-
-        <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:30px; border-radius:20px; font-family: sans-serif; margin-bottom:40px;">
-            <h2 style="margin-top:0; color:#1e293b; font-size: 26px; font-weight: 800;">US Market Summary & Valuation</h2>
-            <p style="font-size: 17px; color: #475569; line-height: 1.7;">{summary}</p>
-            <div style="display:flex; gap:50px; margin:25px 0; background:#fff; padding:20px; border-radius:15px; border:1px solid #e2e8f0;">
-                <div><small style="text-transform: uppercase; font-weight: 700; color: #94a3b8; font-size: 12px;">Current P/E Ratio</small><br><b style="color:#2563eb; font-size: 28px; font-weight: 900;">{pe}</b></div>
-                <div><small style="text-transform: uppercase; font-weight: 700; color: #94a3b8; font-size: 12px;">Exp. 1Y Forward Return</small><br><b style="color:#16a34a; font-size: 28px; font-weight: 900;">{forward}</b></div>
+        <div class="valuation-grid">
+            <div class="val-item">
+                <span class="val-label">Current P/E Ratio</span>
+                <span class="val-val">{val_data['pe']}</span>
             </div>
-            <div style="overflow-x: auto;">{table}</div>
+            <div class="val-item">
+                <span class="val-label">1-Year Avg P/E</span>
+                <span class="val-val">{val_data['avg_1y']}</span>
+            </div>
+            <div class="val-item">
+                <span class="val-label">5-Year Avg P/E</span>
+                <span class="val-val">{val_data['avg_5y']}</span>
+            </div>
+            <div class="val-item">
+                <span class="val-label">10-Year Avg P/E</span>
+                <span class="val-val">{val_data['avg_10y']}</span>
+            </div>
         </div>
-        """
+    </div>
 
-        # Sorted sectors loop
-        sorted_sectors = sector_returns.sort_values(ascending=False)
-        for sector, s_ret in sorted_sectors.items():
-            if sector not in WATCHLIST: 
-                continue
-            
-            html += f"""<div class="sector-block">
-                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px;">
-                    <h3 style="margin:0; font-family: sans-serif; font-size: 26px; font-weight: 800; color: #0f172a;">{sector}</h3>
-                    <b style="font-size:24px; font-weight: 900; color:{'#16a34a' if s_ret > 0 else '#dc2626'}">{s_ret:+.2f}%</b>
-                </div>
-                <div class="stock-grid">"""
-            
-            sec_stocks = []
-            for name_with_ticker in WATCHLIST.get(sector, []):
-                ticker = get_ticker(name_with_ticker)
-                if ticker in stock_data:
-                    sec_stocks.append({'full_name': name_with_ticker, 'ticker': ticker, **stock_data[ticker]})
-            
-            sorted_stocks = sorted(sec_stocks, key=lambda x: x['vol_ratio'], reverse=True)
+    <!-- SECTOR PERFORMANCE PILLS -->
+    <div class="card">
+        <div class="section-title">Sector ETF Performance</div>
+        <div class="sector-grid">
+"""
+        for sec in sectors:
+            is_pos = sec['pct_change'] >= 0
+            pill_cls = "bg-green" if is_pos else "bg-red"
+            sign = "+" if is_pos else ""
+            html += f"""
+            <div class="sector-pill {pill_cls}">
+                <span class="sector-name">{sec['name']}</span>
+                <span style="font-weight:700;">{sign}{sec['pct_change']:.2f}%</span>
+            </div>
+"""
 
-            for s in sorted_stocks:
-                vx = float(s['vol_ratio'])
-                v_color = "#ea580c" if vx > 2.0 else "#1e293b"
-                v_bg = "#fff7ed" if vx > 2.0 else "#f8fafc"
-                
+        html += f"""
+        </div>
+    </div>
+
+    <!-- CATEGORIZED US WATCHLIST TABLES -->
+    <div class="card">
+        <div class="section-title">Sector Watchlist & Institutional Volume Insights</div>
+"""
+
+        for cat, stocks in watchlist.items():
+            if not stocks: continue
+            html += f"""
+        <h3 style="font-size:15px; font-weight:700; color:#334155; margin: 24px 0 10px 0;">{cat}</h3>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th class="text-left">Company</th>
+                        <th class="text-right">Price ($)</th>
+                        <th class="text-right">Change</th>
+                        <th class="text-right">Volume</th>
+                    </tr>
+                </thead>
+                <tbody>
+"""
+            for s in stocks:
+                is_pos = s['pct_change'] >= 0
+                color_cls = "text-green" if is_pos else "text-red"
+                sign = "+" if is_pos else ""
+                vol_str = MarketDataEngine.format_vol(s['volume'])
+                vol_badge = '<span class="badge badge-vol">Vol Breakout</span>' if s['vol_spike'] else ''
+
                 html += f"""
-                <div class="stock-card">
-                    <div class="company-name">{s['full_name'].split('(')[0].strip()}</div>
-                    <div class="ticker-label">{s['ticker']}</div>
-                    
-                    <div class="price-main">${s['price']:,.2f}</div>
-                    <div class="change-text" style="color:{'#16a34a' if s['change']>0 else '#dc2626'}">
-                        {'▲' if s['change'] > 0 else '▼'} {abs(s['change']):.2f}%
-                    </div>
+                    <tr>
+                        <td class="text-left">
+                            <div class="symbol-cell">
+                                {s['name']}
+                                <span class="sub-symbol">{s['ticker']}</span>
+                                {vol_badge}
+                            </div>
+                        </td>
+                        <td class="text-right" style="font-weight:700;">${s['price']:,.2f}</td>
+                        <td class="text-right {color_cls}" style="font-weight:700;">
+                            {sign}{s['change']:.2f} ({sign}{s['pct_change']:.2f}%)
+                        </td>
+                        <td class="text-right" style="color:#475569;">{vol_str}</td>
+                    </tr>
+"""
+            html += """
+                </tbody>
+            </table>
+        </div>
+"""
 
-                    <div class="vol-badge" style="background: {v_bg};">
-                        <span class="vol-x-val" style="color: {v_color};">
-                            {'🔥' if vx > 2.0 else '📈'} VolX: {vx:.2f}x
-                        </span>
-                        <div class="vol-raw-stats">
-                            <strong>Today:</strong> {UIBuilder.format_vol(s['curr_vol'])}<br>
-                            <strong>20D Avg:</strong> {UIBuilder.format_vol(s.get('avg_vol', 0))}
-                        </div>
-                    </div>
-                </div>"""
-            html += "</div></div>"
+        html += """
+    </div>
+
+</div>
+
+</body>
+</html>
+"""
         return html
 
 #############################################
-## MODULE 4: EXECUTION & POST
+## MODULE 4: EXECUTION & WORDPRESS PUBLISHING
 #############################################
 
 def main():
-    print("🚀 Starting Wall Street Wrap...")
-    engine = MarketDataEngine()
+    print("🚀 Running US Market Wrap with Reference Styling...")
     
-    # 1. Benchmarks
-    bench_raw = yf.download(['^GSPC', '^VIX'] + list(INDEX_MAP.keys()), period='7d')['Close']
-    sp_series = bench_raw['^GSPC'].dropna()
-    sp_change = ((sp_series.iloc[-1] / sp_series.iloc[-2]) - 1) * 100
-    vix_val = float(bench_raw['^VIX'].iloc[-1])
+    # 1. Fetch Engine Data
+    val_data = MarketDataEngine.get_valuation()
+    benchmarks, sectors, watchlist = MarketDataEngine.fetch_market_overview()
     
-    # 2. Sector Returns
-    sector_returns = ((bench_raw[list(INDEX_MAP.keys())].iloc[-1] / bench_raw[list(INDEX_MAP.keys())].iloc[-2]) - 1) * 100
-    sector_returns = sector_returns.rename(INDEX_MAP).drop(labels=['S&P 500'], errors='ignore')
-
-    # 3. Stats & Valuation
-    stock_stats = engine.get_stock_stats()
-    val_data = engine.get_valuation()
-
-    # 4. Build HTML
-    hero_html = UIBuilder.build_hero(pd.DataFrame(sp_series).rename(columns={'^GSPC': 'Close'}), sp_change, vix_val)
-    body_html = UIBuilder.build_body(stock_stats, sector_returns, val_data)
-
-    # 5. Push to WordPress
-    if not WP_USER or not WP_PASS or not WP_URL:
-        print("⚠️ WordPress environment variables (WP_USER, WP_PASS, WP_URL) are missing. Skipping API call.")
-        return
-
-    auth = base64.b64encode(f"{WP_USER}:{WP_PASS}".encode()).decode()
-    headers = {'Authorization': f'Basic {auth}', 'Content-Type': 'application/json'}
-    payload = {
-        'title': f"Wall Street Wrap: S&P 500 {'Gains' if sp_change > 0 else 'Slips'} {sp_change:.2f}% ({datetime.now().strftime('%d %b')})",
-        'content': hero_html + body_html, 
-        'status': 'publish', 
-        'categories': [CATEGORY_ID]
-    }
+    # 2. Build HTML with Inter typography & Tabular alignments
+    html_content = UIBuilder.generate_html(benchmarks, sectors, watchlist, val_data)
     
-    try:
-        res = requests.post(WP_URL, headers=headers, json=payload, timeout=20)
-        print("✅ Success!" if res.status_code == 201 else f"❌ Error ({res.status_code}): {res.text}")
-    except Exception as e:
-        print(f"❌ Failed to post to WordPress: {e}")
+    # Save locally as reference
+    with open("us_market_wrap.html", "w", encoding="utf-8") as f:
+        f.write(html_content)
+    print("✅ Local preview generated as 'us_market_wrap.html'")
+
+    # 3. Post to WordPress if credentials exist
+    if WP_USER and WP_PASS and WP_URL:
+        auth = base64.b64encode(f"{WP_USER}:{WP_PASS}".encode()).decode()
+        headers = {'Authorization': f'Basic {auth}', 'Content-Type': 'application/json'}
+        sp_change = benchmarks[0]['pct_change'] if benchmarks else 0.0
+        payload = {
+            'title': f"Wall Street Wrap: S&P 500 {'Gains' if sp_change > 0 else 'Slips'} {sp_change:.2f}% ({datetime.now().strftime('%d %b')})",
+            'content': html_content,
+            'status': 'publish',
+            'categories': [CATEGORY_ID]
+        }
+        try:
+            res = requests.post(WP_URL, headers=headers, json=payload, timeout=20)
+            print("✅ Successfully published to WordPress!" if res.status_code == 201 else f"❌ WP Error: {res.text}")
+        except Exception as e:
+            print(f"❌ Failed publishing to WP: {e}")
 
 if __name__ == "__main__":
     main()
