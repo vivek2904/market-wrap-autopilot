@@ -1,7 +1,13 @@
-import os, requests, base64, pandas as pd, yfinance as yf, pandas_ta as ta
+import os
+import requests
+import base64
+import pandas as pd
+import yfinance as yf
+import pandas_ta as ta
 from datetime import datetime
 from bs4 import BeautifulSoup
-import io, re
+import io
+import re
 
 #############################################
 ## MODULE 1: CONFIGURATION & WATCHLIST
@@ -10,7 +16,7 @@ import io, re
 WP_USER = os.environ.get('WP_USER')
 WP_PASS = os.environ.get('WP_PASS')
 WP_URL = os.environ.get('WP_URL')
-CATEGORY_ID = 12 
+CATEGORY_ID = 12
 
 WATCHLIST = {
     'Technology': ['Apple (AAPL)', 'Microsoft (MSFT)', 'Nvidia (NVDA)', 'Broadcom (AVGO)', 'Oracle (ORCL)', 'Adobe (ADBE)', 'Cisco (CSCO)', 'Salesforce (CRM)', 'AMD (AMD)', 'Qualcomm (QCOM)'],
@@ -59,33 +65,47 @@ class MarketDataEngine:
                     pe_cols = [c for c in df.columns if "vs Current P/E" in str(c)]
                     if pe_cols:
                         match = re.search(r'\((.*?)\)', str(pe_cols[0]))
-                        if match: pe = match.group(1)
+                        if match: 
+                            pe = match.group(1)
                     table_html = df[['Period', 'Average P/E (μ)', 'Std Dev (σ)', 'Valuation']].head(5).to_html(index=False, border=0, classes='valuation-table')
                 if not df.empty and '1 Years' in str(df.iloc[:, 0].values):
                     forward_ret = f"{df.iloc[0, 6]}%"
             return summary, pe, forward_ret, table_html
-        except: return "US Market Valuation Analysis.", "26.94", "3.26%", ""
+        except Exception as e: 
+            return "US Market Valuation Analysis.", "26.94", "3.26%", ""
 
     @staticmethod
     def get_stock_stats():
-        """Fixed method name to match main() call."""
         data = yf.download(ALL_TICKERS, period="60d", interval="1d", auto_adjust=True, threads=True)
         results = {}
         for t in ALL_TICKERS:
             try:
-                subset = data.iloc[:, data.columns.get_level_values(1)==t]
-                subset.columns = subset.columns.get_level_values(0)
-                prices, vol = subset['Close'].dropna(), subset['Volume'].dropna()
-                if len(prices) < 20: continue
+                if isinstance(data.columns, pd.MultiIndex):
+                    subset = data.iloc[:, data.columns.get_level_values(1) == t]
+                    subset.columns = subset.columns.get_level_values(0)
+                else:
+                    subset = data
+                
+                prices = subset['Close'].dropna()
+                vol = subset['Volume'].dropna()
+                
+                if len(prices) < 20: 
+                    continue
+                
+                avg_vol_20 = vol.iloc[-21:-1].mean()
+                curr_vol = vol.iloc[-1]
+                vol_ratio = curr_vol / avg_vol_20 if avg_vol_20 > 0 else 1.0
+                
                 results[t] = {
-                    'price': prices.iloc[-1],
-                    'change': ((prices.iloc[-1]/prices.iloc[-2])-1)*100,
-                    'rsi': ta.rsi(prices, length=14).iloc[-1],
-                    'vol_ratio': vol.iloc[-1] / vol.iloc[-21:-1].mean(),
-                    'curr_vol': vol.iloc[-1],
-                    'avg_vol': vol.iloc[-21:-1].mean()
+                    'price': float(prices.iloc[-1]),
+                    'change': float(((prices.iloc[-1] / prices.iloc[-2]) - 1) * 100),
+                    'rsi': float(ta.rsi(prices, length=14).iloc[-1]),
+                    'vol_ratio': float(vol_ratio),
+                    'curr_vol': float(curr_vol),
+                    'avg_vol': float(avg_vol_20)
                 }
-            except: continue
+            except Exception: 
+                continue
         return results
 
 #############################################
@@ -180,7 +200,8 @@ class UIBuilder:
         # Sorted sectors loop
         sorted_sectors = sector_returns.sort_values(ascending=False)
         for sector, s_ret in sorted_sectors.items():
-            if sector not in WATCHLIST: continue
+            if sector not in WATCHLIST: 
+                continue
             
             html += f"""<div class="sector-block">
                 <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px;">
@@ -189,10 +210,9 @@ class UIBuilder:
                 </div>
                 <div class="stock-grid">"""
             
-            # Stock Logic: Sorted by vol_ratio inside build_body
             sec_stocks = []
             for name_with_ticker in WATCHLIST.get(sector, []):
-                ticker = re.search(r'\((.*?)\)', name_with_ticker).group(1) if '(' in name_with_ticker else name_with_ticker
+                ticker = get_ticker(name_with_ticker)
                 if ticker in stock_data:
                     sec_stocks.append({'full_name': name_with_ticker, 'ticker': ticker, **stock_data[ticker]})
             
@@ -225,6 +245,7 @@ class UIBuilder:
                 </div>"""
             html += "</div></div>"
         return html
+
 #############################################
 ## MODULE 4: EXECUTION & POST
 #############################################
@@ -244,7 +265,7 @@ def main():
     sector_returns = sector_returns.rename(INDEX_MAP).drop(labels=['S&P 500'], errors='ignore')
 
     # 3. Stats & Valuation
-    stock_stats = engine.get_stock_stats() # Name fixed
+    stock_stats = engine.get_stock_stats()
     val_data = engine.get_valuation()
 
     # 4. Build HTML
@@ -252,14 +273,24 @@ def main():
     body_html = UIBuilder.build_body(stock_stats, sector_returns, val_data)
 
     # 5. Push to WordPress
+    if not WP_USER or not WP_PASS or not WP_URL:
+        print("⚠️ WordPress environment variables (WP_USER, WP_PASS, WP_URL) are missing. Skipping API call.")
+        return
+
     auth = base64.b64encode(f"{WP_USER}:{WP_PASS}".encode()).decode()
     headers = {'Authorization': f'Basic {auth}', 'Content-Type': 'application/json'}
     payload = {
         'title': f"Wall Street Wrap: S&P 500 {'Gains' if sp_change > 0 else 'Slips'} {sp_change:.2f}% ({datetime.now().strftime('%d %b')})",
-        'content': hero_html + body_html, 'status': 'publish', 'categories': [CATEGORY_ID]
+        'content': hero_html + body_html, 
+        'status': 'publish', 
+        'categories': [CATEGORY_ID]
     }
-    res = requests.post(WP_URL, headers=headers, json=payload)
-    print("✅ Success!" if res.status_code == 201 else f"❌ Error: {res.text}")
+    
+    try:
+        res = requests.post(WP_URL, headers=headers, json=payload, timeout=20)
+        print("✅ Success!" if res.status_code == 201 else f"❌ Error ({res.status_code}): {res.text}")
+    except Exception as e:
+        print(f"❌ Failed to post to WordPress: {e}")
 
 if __name__ == "__main__":
     main()
